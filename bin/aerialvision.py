@@ -65,16 +65,20 @@
 import sys
 import os
 
-if not os.environ['HOME']:
-	print 'please set your HOME environment variable to your home directory'
-	sys.exit
+# Check if the 'HOME' environment variable is set
+if 'HOME' not in os.environ or not os.environ['HOME']:
+    print('Please set your HOME environment variable to your home directory')
+else:
+    # If 'HOME' is set, you can proceed with your logic
+    print(f'Your HOME directory is set to: {os.environ["HOME"]}')
+    
 if not os.environ['GPGPUSIM_ROOT']:
-	print 'please set your GPGPUSIM_ROOT environment variable to your home directory'
+	print ('please set your GPGPUSIM_ROOT environment variable to your home directory')
 	sys.exit
 
 sys.path.append( os.environ['GPGPUSIM_ROOT'] + '/aerialvision/' ) 
 
-import Tkinter as Tk
+import tkinter as Tk
 import Pmw
 import startup
 import time

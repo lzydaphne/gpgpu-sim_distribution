@@ -61,6 +61,15 @@ void remove_snap_shot_trigger(snap_shot_trigger *ss_trigger) {
   list_ss_trigger.remove(ss_trigger);
 }
 
+/**
+ * Tries to take a snapshot at the given current cycle.
+ *
+ * @param current_cycle the current cycle at which to attempt a snapshot
+ *
+ * @return void
+ *
+ * @throws None
+ */
 void try_snap_shot(unsigned long long current_cycle) {
   if (min_snap_shot_interval == 0) return;
   if (current_cycle != next_snap_shot_cycle) return;

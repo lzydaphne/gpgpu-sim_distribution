@@ -42,6 +42,9 @@ class memory_space;
 class function_info;
 class symbol_table;
 
+//! test
+extern bool is_wmma_instruction;  // Declaration
+
 extern const char *g_gpgpusim_version_string;
 extern int g_debug_execution;
 

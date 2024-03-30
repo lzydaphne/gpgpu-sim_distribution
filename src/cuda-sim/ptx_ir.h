@@ -39,7 +39,7 @@
 #include <string>
 #include <vector>
 
-//#include "ptx.tab.h"
+// #include "ptx.tab.h"
 #include "ptx_sim.h"
 
 #include "memory.h"
@@ -1244,6 +1244,9 @@ class param_info {
 
 class function_info {
  public:
+  // //! test
+  // bool is_wmma_instruction = false;
+
   function_info(int entry_point, gpgpu_context *ctx);
   const ptx_version &get_ptx_version() const {
     return m_symtab->get_ptx_version();
@@ -1254,7 +1257,8 @@ class function_info {
   void set_symtab(symbol_table *symtab) { m_symtab = symtab; }
   std::string get_name() const { return m_name; }
   unsigned print_insn(unsigned pc, FILE *fp) const;
-  std::string get_insn_str(unsigned pc) const;
+  // std::string get_insn_str(unsigned pc) const;
+  std::string get_insn_str(unsigned pc);
   void add_inst(const std::list<ptx_instruction *> &instructions) {
     m_instructions = instructions;
   }
@@ -1325,6 +1329,8 @@ class function_info {
   }
   bool has_return() const { return m_return_var_sym != NULL; }
   const symbol *get_return_var() const { return m_return_var_sym; }
+
+  //! get instruction at PC
   const ptx_instruction *get_instruction(unsigned PC) const {
     unsigned index = PC - m_start_PC;
     if (index < m_instr_mem_size) return m_instr_mem[index];

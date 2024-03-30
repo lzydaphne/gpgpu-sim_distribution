@@ -72,6 +72,16 @@ static void termination_callback() {
   fflush(stdout);
 }
 
+//! start simulation: concurrent kernel execution
+/**
+ * Simulates concurrent kernel execution on a GPGPU.
+ *
+ * @param ctx_ptr pointer to the GPGPU context
+ *
+ * @return null
+ *
+ * @throws N/A
+ */
 void *gpgpu_sim_thread_concurrent(void *ctx_ptr) {
   gpgpu_context *ctx = (gpgpu_context *)ctx_ptr;
   atexit(termination_callback);
@@ -112,7 +122,7 @@ void *gpgpu_sim_thread_concurrent(void *ctx_ptr) {
           !ctx->the_gpgpusim->g_the_gpu->active())
         break;
 
-      // functional simulation
+      //! functional simulation
       if (ctx->the_gpgpusim->g_the_gpu->is_functional_sim()) {
         kernel_info_t *kernel =
             ctx->the_gpgpusim->g_the_gpu->get_functional_kernel();
@@ -122,28 +132,36 @@ void *gpgpu_sim_thread_concurrent(void *ctx_ptr) {
         ctx->the_gpgpusim->g_the_gpu->finish_functional_sim(kernel);
       }
 
-      // performance simulation
+      //! performance simulation
       if (ctx->the_gpgpusim->g_the_gpu->active()) {
         ctx->the_gpgpusim->g_the_gpu->cycle();
         sim_cycles = true;
         ctx->the_gpgpusim->g_the_gpu->deadlock_check();
       } else {
         if (ctx->the_gpgpusim->g_the_gpu->cycle_insn_cta_max_hit()) {
+          printf(
+              "GPGPU-Sim: ** BREAK DUE TO CTA COUNT LIMIT **\n"
+              "GPGPU-Sim: ** (consider increasing the cta-max-count) **\n");
           ctx->the_gpgpusim->g_stream_manager->stop_all_running_kernels();
           ctx->the_gpgpusim->g_sim_done = true;
           ctx->the_gpgpusim->break_limit = true;
         }
+        printf("GPGPU-Sim: ** simulation thread waiting for work **\n");
       }
 
       active = ctx->the_gpgpusim->g_the_gpu->active() ||
                !(ctx->the_gpgpusim->g_stream_manager->empty_protected());
 
     } while (active && !ctx->the_gpgpusim->g_sim_done);
+
     if (g_debug_execution >= 3) {
       printf("GPGPU-Sim: ** STOP simulation thread (no work) **\n");
       fflush(stdout);
     }
+    //! add debug information
+    printf("reach: add debug information\n");
     if (sim_cycles) {
+      printf("reach: add debug information--enter\n");
       ctx->the_gpgpusim->g_the_gpu->print_stats();
       ctx->the_gpgpusim->g_the_gpu->update_stats();
       ctx->print_simulation_time();
@@ -236,6 +254,7 @@ void gpgpu_context::start_sim_thread(int api) {
   if (the_gpgpusim->g_sim_done) {
     the_gpgpusim->g_sim_done = false;
     if (api == 1) {
+      printf("Starting GPU simulation thread\n");
       pthread_create(&(the_gpgpusim->g_simulation_thread), NULL,
                      gpgpu_sim_thread_concurrent, (void *)this);
     } else {

@@ -184,7 +184,8 @@ bool stream_operation::do_operation(gpgpu_sim *gpu) {
     case stream_wait_event:
       // only allows next op to go if event is done
       // otherwise stays in the stream queue
-      printf("stream wait event processing...\n");
+      //!
+      // printf("stream wait event processing...\n");
       if (m_event->num_updates() >= m_cnt) {
         printf("stream wait event done\n");
         m_stream->record_next_done();
@@ -300,6 +301,7 @@ bool stream_manager::register_finished_kernel(unsigned grid_uid) {
 void stream_manager::stop_all_running_kernels() {
   pthread_mutex_lock(&m_lock);
 
+  printf("GPGPU-Sim API: stop all running kernels\n");
   // Signal m_gpu to stop all running kernels
   m_gpu->stop_all_running_kernels();
 

@@ -1,17 +1,18 @@
 // Copyright (c) 2009-2021, Tor M. Aamodt, Wilson W.L. Fung, Ali Bakhoda,
-// George L. Yuan, Andrew Turner, Inderpreet Singh, Vijay Kandiah, Nikos Hardavellas
-// The University of British Columbia, Northwestern University
-// All rights reserved.
+// George L. Yuan, Andrew Turner, Inderpreet Singh, Vijay Kandiah, Nikos
+// Hardavellas The University of British Columbia, Northwestern University All
+// rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 //
-// 1. Redistributions of source code must retain the above copyright notice, this
+// 1. Redistributions of source code must retain the above copyright notice,
+// this
 //    list of conditions and the following disclaimer;
 // 2. Redistributions in binary form must reproduce the above copyright notice,
 //    this list of conditions and the following disclaimer in the documentation
 //    and/or other materials provided with the distribution;
-// 3. Neither the names of The University of British Columbia, Northwestern 
+// 3. Neither the names of The University of British Columbia, Northwestern
 //    University nor the names of their contributors may be used to
 //    endorse or promote products derived from this software without specific
 //    prior written permission.
@@ -27,6 +28,8 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
+
+// #include "../abstract_hardware_model.h"
 
 #include "shader.h"
 #include <float.h>
@@ -121,6 +124,9 @@ void shader_core_ctx::create_front_pipeline() {
     m_config->m_specialized_unit[j].OC_EX_SPEC_ID = m_pipeline_reg.size() - 1;
   }
 
+  printf("m_pipeline_reg[ID_OC_SP].get_size(): %d\n",
+         m_pipeline_reg[ID_OC_SP].get_size());
+  //! sub core model
   if (m_config->sub_core_model) {
     // in subcore model, each scheduler should has its own issue register, so
     // ensure num scheduler = reg width
@@ -186,20 +192,16 @@ void shader_core_ctx::create_schedulers() {
   // must currently occur after all inputs have been initialized.
   std::string sched_config = m_config->gpgpu_scheduler_string;
   const concrete_scheduler scheduler =
-      sched_config.find("lrr") != std::string::npos
-          ? CONCRETE_SCHEDULER_LRR
-          : sched_config.find("two_level_active") != std::string::npos
-                ? CONCRETE_SCHEDULER_TWO_LEVEL_ACTIVE
-                : sched_config.find("gto") != std::string::npos
-                      ? CONCRETE_SCHEDULER_GTO
-                      : sched_config.find("rrr") != std::string::npos
-                            ? CONCRETE_SCHEDULER_RRR
-                      : sched_config.find("old") != std::string::npos
-                            ? CONCRETE_SCHEDULER_OLDEST_FIRST
-                            : sched_config.find("warp_limiting") !=
-                                      std::string::npos
-                                  ? CONCRETE_SCHEDULER_WARP_LIMITING
-                                  : NUM_CONCRETE_SCHEDULERS;
+      sched_config.find("lrr") != std::string::npos ? CONCRETE_SCHEDULER_LRR
+      : sched_config.find("two_level_active") != std::string::npos
+          ? CONCRETE_SCHEDULER_TWO_LEVEL_ACTIVE
+      : sched_config.find("gto") != std::string::npos ? CONCRETE_SCHEDULER_GTO
+      : sched_config.find("rrr") != std::string::npos ? CONCRETE_SCHEDULER_RRR
+      : sched_config.find("old") != std::string::npos
+          ? CONCRETE_SCHEDULER_OLDEST_FIRST
+      : sched_config.find("warp_limiting") != std::string::npos
+          ? CONCRETE_SCHEDULER_WARP_LIMITING
+          : NUM_CONCRETE_SCHEDULERS;
   assert(scheduler != NUM_CONCRETE_SCHEDULERS);
 
   for (unsigned i = 0; i < m_config->gpgpu_num_sched_per_core; i++) {
@@ -486,8 +488,8 @@ shader_core_ctx::shader_core_ctx(class gpgpu_sim *gpu,
   m_sid = shader_id;
   m_tpc = tpc_id;
 
-  if(get_gpu()->get_config().g_power_simulation_enabled){
-    scaling_coeffs =  get_gpu()->get_scaling_coeffs();
+  if (get_gpu()->get_config().g_power_simulation_enabled) {
+    scaling_coeffs = get_gpu()->get_scaling_coeffs();
   }
 
   m_last_inst_gpu_sim_cycle = 0;
@@ -621,6 +623,10 @@ void shader_core_stats::print(FILE *fout) const {
     thread_icount_uarch += m_num_sim_insn[i];
     warp_icount_uarch += m_num_sim_winsn[i];
   }
+  //! custom output
+  fprintf(fout, "tensor_gpu_sim_cycle = %llu\n", tensor_gpu_sim_cycle);
+  fprintf(fout, "sp_gpu_sim_cycle = %llu\n", sp_gpu_sim_cycle);
+
   fprintf(fout, "gpgpu_n_tot_thrd_icount = %lld\n", thread_icount_uarch);
   fprintf(fout, "gpgpu_n_tot_w_icount = %lld\n", warp_icount_uarch);
 
@@ -893,7 +899,9 @@ void shader_core_ctx::decode() {
     m_warp[m_inst_fetch_buffer.m_warp_id]->inc_inst_in_pipeline();
     if (pI1) {
       m_stats->m_num_decoded_insn[m_sid]++;
-      if ((pI1->oprnd_type == INT_OP) || (pI1->oprnd_type == UN_OP))  { //these counters get added up in mcPat to compute scheduler power
+      if ((pI1->oprnd_type == INT_OP) ||
+          (pI1->oprnd_type == UN_OP)) {  // these counters get added up in mcPat
+                                         // to compute scheduler power
         m_stats->m_num_INTdecoded_insn[m_sid]++;
       } else if (pI1->oprnd_type == FP_OP) {
         m_stats->m_num_FPdecoded_insn[m_sid]++;
@@ -904,7 +912,9 @@ void shader_core_ctx::decode() {
         m_warp[m_inst_fetch_buffer.m_warp_id]->ibuffer_fill(1, pI2);
         m_warp[m_inst_fetch_buffer.m_warp_id]->inc_inst_in_pipeline();
         m_stats->m_num_decoded_insn[m_sid]++;
-        if ((pI1->oprnd_type == INT_OP) || (pI1->oprnd_type == UN_OP))  { //these counters get added up in mcPat to compute scheduler power
+        if ((pI1->oprnd_type == INT_OP) ||
+            (pI1->oprnd_type == UN_OP)) {  // these counters get added up in
+                                           // mcPat to compute scheduler power
           m_stats->m_num_INTdecoded_insn[m_sid]++;
         } else if (pI2->oprnd_type == FP_OP) {
           m_stats->m_num_FPdecoded_insn[m_sid]++;
@@ -987,11 +997,10 @@ void shader_core_ctx::fetch() {
               m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
           std::list<cache_event> events;
           enum cache_request_status status;
-          if (m_config->perfect_inst_const_cache){
+          if (m_config->perfect_inst_const_cache) {
             status = HIT;
             shader_cache_access_log(m_sid, INSTRUCTION, 0);
-          }
-          else
+          } else
             status = m_L1I->access(
                 (new_addr_type)ppc, mf,
                 m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle, events);
@@ -1027,6 +1036,7 @@ void exec_shader_core_ctx::func_exec_inst(warp_inst_t &inst) {
   }
 }
 
+//! warp decide which instruction to fetch
 void shader_core_ctx::issue_warp(register_set &pipe_reg_set,
                                  const warp_inst_t *next_inst,
                                  const active_mask_t &active_mask,
@@ -1065,7 +1075,7 @@ void shader_core_ctx::issue() {
   unsigned j;
   for (unsigned i = 0; i < schedulers.size(); i++) {
     j = (Issue_Prio + i) % schedulers.size();
-    schedulers[j]->cycle();
+    schedulers[j]->cycle();  //! scheduler_unit::cycle()
   }
   Issue_Prio = (Issue_Prio + 1) % schedulers.size();
 
@@ -1128,11 +1138,12 @@ void scheduler_unit::order_rrr(
   if (m_num_issued_last_cycle > 0 || warp(m_current_turn_warp).done_exit() ||
       warp(m_current_turn_warp).waiting()) {
     std::vector<shd_warp_t *>::const_iterator iter =
-      (last_issued_from_input == input_list.end()) ? 
-        input_list.begin() : last_issued_from_input + 1;
+        (last_issued_from_input == input_list.end())
+            ? input_list.begin()
+            : last_issued_from_input + 1;
     for (unsigned count = 0; count < num_warps_to_add; ++iter, ++count) {
       if (iter == input_list.end()) {
-      iter = input_list.begin();
+        iter = input_list.begin();
       }
       unsigned warp_id = (*iter)->get_warp_id();
       if (!(*iter)->done_exit() && !(*iter)->waiting()) {
@@ -1190,8 +1201,10 @@ void scheduler_unit::order_by_priority(
   }
 }
 
+//! modified
 void scheduler_unit::cycle() {
   SCHED_DPRINTF("scheduler_unit::cycle()\n");
+  // printf("scheduler_unit::cycle()\n");
   bool valid_inst =
       false;  // there was one warp with a valid instruction to issue (didn't
               // require flush due to control hazard)
@@ -1200,6 +1213,26 @@ void scheduler_unit::cycle() {
   bool issued_inst = false;  // of these we issued one
 
   order_warps();
+  /*! Iterating Over Warps:
+  The function iterates over the ordered list of warps
+   For each warp, several checks are performed to determine if it can issue an
+   instruction:
+
+   Validity Check:
+   Skips over warps that are NULL or have completed their
+    execution (done_exit()).
+
+    Warp State Checks:
+    It looks into the warp's instruction buffer (ibuffer) and
+    waiting status. If the warp's ibuffer is empty or the warp is waiting (e.g.,
+   on a barrier), it moves to the next warp.
+
+    Instruction Issuance Loop:
+    For warps that pass the initial checks, the
+   scheduler attempts to issue instructions from the warp's ibuffer, subject to
+   limitations such as the maximum number of instructions that can be issued per
+   warp per cycle (max_issue) and other hardware constraints.
+   */
   for (std::vector<shd_warp_t *>::const_iterator iter =
            m_next_cycle_prioritized_warps.begin();
        iter != m_next_cycle_prioritized_warps.end(); iter++) {
@@ -1232,9 +1265,31 @@ void scheduler_unit::cycle() {
           "barrier\n",
           (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id());
 
+    /*Issuing Instructions: Within this loop, for each instruction that is
+      considered for issuance:
+
+      Control Dependency Checks: Instructions that are control-dependent on
+    previous instructions might require flushing the ibuffer if the program
+    counter (PC) has diverged.
+
+      Scoreboarding and Dependency Checks: The scheduler consults the scoreboard
+    to ensure there are no data dependencies that prevent the instruction from
+    being issued. If the instruction is ready, it is marked as such (ready_inst
+    = true).
+
+      Resource Availability Checks: Depending on the type of operation (e.g.,
+    memory load/store, arithmetic operation), the scheduler checks if the
+    corresponding execution unit (e.g., Load/Store unit, SP unit, etc.) has
+    available resources to execute the instruction.
+
+    Execution Unit Assignment: If an instruction passes all checks, it is
+     * issued to the appropriate execution unit. The function tracks whether any
+     * instruction has been issued during this cycle (issued_inst = true).
+     */
     while (!warp(warp_id).waiting() && !warp(warp_id).ibuffer_empty() &&
            (checked < max_issue) && (checked <= issued) &&
            (issued < max_issue)) {
+      // pI is a pointer to a constant instance of warp_inst_t
       const warp_inst_t *pI = warp(warp_id).ibuffer_next_inst();
       // Jin: handle cdp latency;
       if (pI && pI->m_is_cdp && warp(warp_id).m_cdp_latency > 0) {
@@ -1247,6 +1302,16 @@ void scheduler_unit::cycle() {
       bool warp_inst_issued = false;
       unsigned pc, rpc;
       m_shader->get_pdom_stack_top_info(warp_id, pI, &pc, &rpc);
+      //! test
+      // printf("ptx_get_insn_str: %s\n",
+      //        m_shader->m_config->gpgpu_ctx->func_sim->ptx_get_insn_str(pc)
+      //            .c_str());
+      //! printf as below
+      printf(
+          "Warp (warp_id %u, dynamic_warp_id %u) has valid instruction (%s)\n",
+          (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(),
+          m_shader->m_config->gpgpu_ctx->func_sim->ptx_get_insn_str(pc)
+              .c_str());
       SCHED_DPRINTF(
           "Warp (warp_id %u, dynamic_warp_id %u) has valid instruction (%s)\n",
           (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(),
@@ -1275,6 +1340,8 @@ void scheduler_unit::cycle() {
 
             assert(warp(warp_id).inst_in_pipeline());
 
+            //* distinguish different ops
+            // memory access operations
             if ((pI->op == LOAD_OP) || (pI->op == STORE_OP) ||
                 (pI->op == MEMORY_BARRIER_OP) ||
                 (pI->op == TENSOR_CORE_LOAD_OP) ||
@@ -1307,9 +1374,11 @@ void scheduler_unit::cycle() {
                                         m_id);
 
                 // if INT unit pipline exist, then execute ALU and INT
-                // operations on INT unit and SP-FPU on SP unit (like in Volta)
-                // if INT unit pipline does not exist, then execute all ALU, INT
-                // and SP operations on SP unit (as in Fermi, Pascal GPUs)
+                // operations on INT unit and SP-FPU on SP unit (like in
+                // Volta)
+                // if INT unit pipline does not exist, then
+                // execute all ALU, INT and SP operations on SP unit (as
+                // in Fermi, Pascal GPUs)
                 if (m_shader->m_config->gpgpu_num_int_units > 0 &&
                     int_pipe_avail && pI->op != SP_OP &&
                     !(diff_exec_units &&
@@ -1322,7 +1391,7 @@ void scheduler_unit::cycle() {
                          !(diff_exec_units && previous_issued_inst_exec_type ==
                                                   exec_unit_type_t::SP))
                   execute_on_SP = true;
-
+                // --------------------------------------------------------
                 if (execute_on_INT || execute_on_SP) {
                   // Jin: special for CDP api
                   if (pI->m_is_cdp && !warp(warp_id).m_cdp_dummy) {
@@ -1332,7 +1401,8 @@ void scheduler_unit::cycle() {
                       warp(warp_id).m_cdp_latency =
                           m_shader->m_config->gpgpu_ctx->func_sim
                               ->cdp_latency[pI->m_is_cdp - 1];
-                    else  // cudaLaunchDeviceV2 and cudaGetParameterBufferV2
+                    else  // cudaLaunchDeviceV2 and
+                          // cudaGetParameterBufferV2
                       warp(warp_id).m_cdp_latency =
                           m_shader->m_config->gpgpu_ctx->func_sim
                               ->cdp_latency[pI->m_is_cdp - 1] +
@@ -1379,8 +1449,8 @@ void scheduler_unit::cycle() {
                   warp_inst_issued = true;
                   previous_issued_inst_exec_type = exec_unit_type_t::DP;
                 }
-              }  // If the DP units = 0 (like in Fermi archi), then execute DP
-                 // inst on SFU unit
+              }  // If the DP units = 0 (like in Fermi archi), then
+                 // execute DP inst on SFU unit
               else if (((m_shader->m_config->gpgpu_num_dp_units == 0 &&
                          pI->op == DP_OP) ||
                         (pI->op == SFU_OP) || (pI->op == ALU_SFU_OP)) &&
@@ -1402,12 +1472,17 @@ void scheduler_unit::cycle() {
               } else if ((pI->op == TENSOR_CORE_OP) &&
                          !(diff_exec_units && previous_issued_inst_exec_type ==
                                                   exec_unit_type_t::TENSOR)) {
+                //! tensor_core opration!
                 bool tensor_core_pipe_avail =
                     (m_shader->m_config->gpgpu_num_tensor_core_units > 0) &&
                     m_tensor_core_out->has_free(
                         m_shader->m_config->sub_core_model, m_id);
 
                 if (tensor_core_pipe_avail) {
+                  //! test
+                  printf(
+                      "scheduler_unit::cycle(): issue tensor core when "
+                      "tensor_core_pipe_avail\n");
                   m_shader->issue_warp(*m_tensor_core_out, pI, active_mask,
                                        warp_id, m_id);
                   issued++;
@@ -1455,14 +1530,27 @@ void scheduler_unit::cycle() {
         warp(warp_id).set_next_pc(pc);
         warp(warp_id).ibuffer_flush();
       }
+
+      // do on warp_issued
       if (warp_inst_issued) {
         SCHED_DPRINTF(
             "Warp (warp_id %u, dynamic_warp_id %u) issued %u instructions\n",
+            (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(), issued);
+        printf(
+            "Warp (warp_id %u, dynamic_warp_id %u) issued %u instructions "
+            "--warp_inst_issued\n",
             (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(), issued);
         do_on_warp_issued(warp_id, issued, iter);
       }
       checked++;
     }
+
+    //* Post-Issuance Handling: After attempting to issue instructions from a
+    // warp
+    // ,the scheduler updates various internal states and statistics,
+    // including marking the warp as the last supervised warp issued
+    // (m_last_supervised_issued), and updating counters for single or dual
+    // issued instructions.
     if (issued) {
       // This might be a bit inefficient, but we need to maintain
       // two ordered list for proper scheduler execution.
@@ -1735,36 +1823,114 @@ int shader_core_ctx::test_res_bus(int latency) {
   }
   return -1;
 }
-
+/*This function is responsible for managing the execution of instructions across
+   the core's functional units (FUs)
+   and handling the result bus scheduling
+*/
 void shader_core_ctx::execute() {
+  //! Result Bus Aging
   for (unsigned i = 0; i < num_result_bus; i++) {
     *(m_result_bus[i]) >>= 1;
   }
+  //! Functional Units Cycling
   for (unsigned n = 0; n < m_num_function_units; n++) {
-    unsigned multiplier = m_fu[n]->clock_multiplier();
-    for (unsigned c = 0; c < multiplier; c++) m_fu[n]->cycle();
+    // Determines if the FU operates at a different clock rate
+    // (clock_multiplier) compared to the shader core and executes multiple
+    // cycles accordingly.
+    unsigned multiplier =
+        m_fu[n]
+            ->clock_multiplier();  // default to be 1 for each functional unit
+
+    // Calls cycle() on the FU, advancing its state by one simulation cycle.
+    // This may involve progressing instructions through pipeline stages within
+    // the FU.
+    //! modified for tensor core @lzydaphne
+    // for (unsigned c = 0; c < multiplier; c++) m_fu[n]->cycle();
+    for (unsigned c = 0; c < multiplier; c++) {
+      // std::string fu_name = m_fu[n]->get_name();
+      // printf(" m_fu name: %s \n", m_fu[n]->get_name());
+      // if (fu_name.find("TENSOR") != std::string::npos) {
+      //   m_tensor_core_cnt++;
+      // }
+      m_fu[n]->cycle();
+    }
+
+    // Checks for active lanes within the FU pipeline
     m_fu[n]->active_lanes_in_pipeline();
+
+    //! Instruction Issue Attempt
+    // Identifies the issue port and corresponding register set
+    // (m_pipeline_reg[issue_port]) for the current FU. Instructions waiting in
+    // these registers are candidates for issue.
     unsigned issue_port = m_issue_port[n];
     register_set &issue_inst = m_pipeline_reg[issue_port];
+
+    //! Partitioned Issue Logic
+    // Determines if the instruction issue is partitioned (e.g., due to sub-core
+    // models that segregate resources). If so, it identifies the specific
+    // register ID for issue.
+    // Retrieves a pointer to the instruction ready for issue, based on
+    // partitioning logic.
     unsigned reg_id;
     bool partition_issue =
         m_config->sub_core_model && m_fu[n]->is_issue_partitioned();
     if (partition_issue) {
       reg_id = m_fu[n]->get_issue_reg_id();
+      // printf("reg_id: %d \n", reg_id);
+      // fflush(stdout);
     }
+
+    //! Instruction Issue Conditions
+    // Checks if there is an instruction ready for issue and if the FU can issue
+    // the instruction (e.g., no hazards or resource conflicts).
+    // printf(" warp_inst_t **ready_reg = issue_inst.get_ready , reg_id:%d
+    // \n",reg_id); fflush(stdout);
     warp_inst_t **ready_reg = issue_inst.get_ready(partition_issue, reg_id);
+
     if (issue_inst.has_ready(partition_issue, reg_id) &&
         m_fu[n]->can_issue(**ready_reg)) {
       bool schedule_wb_now = !m_fu[n]->stallable();
       int resbus = -1;
+      //! Result Bus Reservation and Instruction Issue
+
+      int cur_warp_id = (*ready_reg)->warp_id();
+      //* need to check if this is tensor core instruction
+      if ((*ready_reg)->op == TENSOR_CORE_OP) {
+        //! test cycle
+        tmp_tensor_gpu_sim_cycle[cur_warp_id] = exp_gpu_sim_cycle;
+        printf("shader_core_ctx::execute():---START--TENSOR----\n");
+        printf("cur_warp_id: %d , tmp_tensor_gpu_sim_cycle[cur_warp_id] %llu\n",
+               cur_warp_id, tmp_tensor_gpu_sim_cycle[cur_warp_id]);
+
+        // printf("START: tmp_tensor_gpu_sim_cycle: %d\n",
+        //  m_pipeline_reg[start_stage]->op);  // out
+        // printf(" Num of Tensor Core Op: %llu\n", m_num_of_tensor_core_op);
+      } else if ((*ready_reg)->op == SP_OP || (*ready_reg)->op == ALU_OP ||
+                 (*ready_reg)->op == INT_OP) {
+        tmp_sp_gpu_sim_cycle[cur_warp_id] = exp_gpu_sim_cycle;
+        printf("shader_core_ctx::execute():---START--SP----\n");
+        printf("cur_warp_id: %d , tmp_sp_gpu_sim_cycle[cur_warp_id]: %llu\n",
+               cur_warp_id, tmp_sp_gpu_sim_cycle[cur_warp_id]);
+        // printf("START: tmp_SP_gpu_sim_cycle: %d\n",
+        //  m_pipeline_reg[start_stage]->op);  // out
+      }
+      // Attempts to reserve a result bus for the instruction's results, based
+      // on its latency. If successful, or if the instruction doesn't need
+      // immediate result bus scheduling, the instruction is issued.
+      // If the result bus cannot be reserved (due to all being occupied or the
+      // instruction's latency exceeding the maximum allowed), the instruction
+      // issue is stalled.
       if (schedule_wb_now &&
           (resbus = test_res_bus((*ready_reg)->latency)) != -1) {
         assert((*ready_reg)->latency < MAX_ALU_LATENCY);
         m_result_bus[resbus]->set((*ready_reg)->latency);
         m_fu[n]->issue(issue_inst);
+        // printf("issue tensor core when schedule_wb_now-1\n");
       } else if (!schedule_wb_now) {
         m_fu[n]->issue(issue_inst);
+        // printf("issue tensor core when !schedule_wb_now-2\n");
       } else {
+        // printf("istall issue -3\n");
         // stall issue (cannot reserve result bus)
       }
     }
@@ -1818,10 +1984,13 @@ void shader_core_ctx::warp_inst_complete(const warp_inst_t &inst) {
   inst.completed(m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
 }
 
+//! modified
 void shader_core_ctx::writeback() {
+  //! Determining Pipeline Utilization
   unsigned max_committed_thread_instructions =
       m_config->warp_size *
       (m_config->pipe_widths[EX_WB]);  // from the functional units
+
   m_stats->m_pipeline_duty_cycle[m_sid] =
       ((float)(m_stats->m_num_sim_insn[m_sid] -
                m_stats->m_last_num_sim_insn[m_sid])) /
@@ -1830,6 +1999,12 @@ void shader_core_ctx::writeback() {
   m_stats->m_last_num_sim_insn[m_sid] = m_stats->m_num_sim_insn[m_sid];
   m_stats->m_last_num_sim_winsn[m_sid] = m_stats->m_num_sim_winsn[m_sid];
 
+  //! Draining Waiting Instructions
+  // Retrieves instructions ready for writeback from the execution/writeback
+  // pipeline register (EX_WB). It then enters a loop to process all such
+  // instructions. Each instruction is processed to write its results back,
+  // release any registers it used, and update relevant counters and flags to
+  // indicate completion.
   warp_inst_t **preg = m_pipeline_reg[EX_WB].get_ready();
   warp_inst_t *pipe_reg = (preg == NULL) ? NULL : *preg;
   while (preg and !pipe_reg->empty()) {
@@ -1849,12 +2024,56 @@ void shader_core_ctx::writeback() {
      * To handle this case, we ignore the return value (thus allowing
      * no stalling).
      */
-
+    //! Instruction Writeback and Release
     m_operand_collector.writeback(*pipe_reg);
     unsigned warp_id = pipe_reg->warp_id();
     m_scoreboard->releaseRegisters(pipe_reg);
     m_warp[warp_id]->dec_inst_in_pipeline();
     warp_inst_complete(*pipe_reg);
+
+    ///------- Tensor Core -------
+    int cur_warp_id = pipe_reg->warp_id();
+    //! added @lzydaphne
+    if (pipe_reg->op == TENSOR_CORE_OP) {
+      m_num_of_tensor_core_op++;
+      printf("-----END---TENSOR-----\n");
+      tensor_gpu_sim_cycle +=
+          exp_gpu_sim_cycle - tmp_tensor_gpu_sim_cycle[cur_warp_id];
+      printf(
+          "cur_warp_id: %d, exp_gpu_sim_cycle: %llu, "
+          "tmp_tensor_gpu_sim_cycle[cur_warp_id]: %llu, tensor_gpu_sim_cycle: "
+          "%llu\n",
+          cur_warp_id, exp_gpu_sim_cycle, tmp_tensor_gpu_sim_cycle[cur_warp_id],
+          tensor_gpu_sim_cycle);
+
+      // printf("tensor_gpu_sim_cycle %llu\n", tensor_gpu_sim_cycle);
+      printf("Instruction: %d\n", pipe_reg->op);
+      printf("Num of Tensor Core Op: %llu\n", m_num_of_tensor_core_op);
+
+    } else if (pipe_reg->op == SP_OP) {
+      m_num_of_SP_op++;
+      printf("-----END---SP-----\n");
+      sp_gpu_sim_cycle += exp_gpu_sim_cycle - tmp_sp_gpu_sim_cycle[cur_warp_id];
+      printf(
+          "cur_warp_id: %d, "
+          "exp_gpu_sim_cycle: %llu, "
+          "tmp_sp_gpu_sim_cycle[cur_warp_id]: %llu, "
+          "sp_gpu_sim_cycle: %llu\n",
+          cur_warp_id, exp_gpu_sim_cycle, tmp_sp_gpu_sim_cycle[cur_warp_id],
+          sp_gpu_sim_cycle);
+
+      // printf("warp_id: %d\n", cur_warp_id);
+      // printf(" exp_gpu_sim_cycle %llu\n", exp_gpu_sim_cycle);
+      // printf("sp_gpu_sim_cycle %llu\n", sp_gpu_sim_cycle);
+      printf("Instruction: %d\n", pipe_reg->op);
+      printf("Num of SP Op: %llu\n", m_num_of_SP_op);
+
+    } else {
+      m_num_of_non_tensor_core_non_SP_op++;
+      printf("Instruction: %d\n", pipe_reg->op);
+      printf(" Num of other Op: %llu\n", m_num_of_non_tensor_core_non_SP_op);
+    }
+    //! Updating Simulation Statistics
     m_gpu->gpu_sim_insn_last_update_sid = m_sid;
     m_gpu->gpu_sim_insn_last_update = m_gpu->gpu_sim_cycle;
     m_last_inst_gpu_sim_cycle = m_gpu->gpu_sim_cycle;
@@ -2282,7 +2501,7 @@ void sp_unit::active_lanes_in_pipeline() {
 void dp_unit::active_lanes_in_pipeline() {
   unsigned active_count = pipelined_simd_unit::get_active_lanes_in_pipeline();
   assert(active_count <= m_core->get_config()->warp_size);
-  //m_core->incspactivelanes_stat(active_count);
+  // m_core->incspactivelanes_stat(active_count);
   m_core->incfuactivelanes_stat(active_count);
   m_core->incfumemactivelanes_stat(active_count);
 }
@@ -2400,22 +2619,67 @@ pipelined_simd_unit::pipelined_simd_unit(register_set *result_port,
   active_insts_in_pipeline = 0;
 }
 
+//! tensor core use this to cycle
+// models the throughput and latency for different types of instruction.
 void pipelined_simd_unit::cycle() {
+  //! Moving Instructions to Result Port
+  // This block checks if there's an instruction ready to move from the first
+  // pipeline register to the result port, which is the final stage before
+  // writeback.
+  // It then moves the instruction into the result port and decrements the count
+  // of active instructions in the pipeline.
   if (!m_pipeline_reg[0]->empty()) {
     m_result_port->move_in(m_pipeline_reg[0]);
     assert(active_insts_in_pipeline > 0);
     active_insts_in_pipeline--;
   }
+  //! Advancing Instructions Through Pipeline Stages
+  // If there are active instructions in the pipeline, this loop iteratively
+  // moves each instruction to the next pipeline stage.
+  // This movement simulates the progression of instructions through the
+  // pipeline's stages during each cycle.
   if (active_insts_in_pipeline) {
     for (unsigned stage = 0; (stage + 1) < m_pipeline_depth; stage++)
       move_warp(m_pipeline_reg[stage], m_pipeline_reg[stage + 1]);
   }
+  //! Dispatching Instructions
+  // This block handles the dispatching of instructions from the dispatch
+  // register to the pipeline. It checks for any dispatch delay, and if there's
+  // none, it calculates the starting stage for the instruction based on its
+  // latency and initiation interval. The instruction is then moved into the
+  // appropriate pipeline stage, and the count of active instructions in the
+  // pipeline is incremented.
   if (!m_dispatch_reg->empty()) {
     if (!m_dispatch_reg->dispatch_delay()) {
       int start_stage =
           m_dispatch_reg->latency - m_dispatch_reg->initiation_interval;
       move_warp(m_pipeline_reg[start_stage], m_dispatch_reg);
       active_insts_in_pipeline++;
+
+      // int cur_warp_id = m_pipeline_reg[start_stage]->warp_id();
+      // //* need to check if this is tensor core instruction
+      // if (m_pipeline_reg[start_stage]->op == TENSOR_CORE_OP ||
+      //     m_pipeline_reg[start_stage]->op == TENSOR_CORE_LOAD_OP ||
+      //     m_pipeline_reg[start_stage]->op == TENSOR_CORE_STORE_OP) {
+      //   //! test cycle
+      //   tmp_tensor_gpu_sim_cycle[cur_warp_id] = exp_gpu_sim_cycle;
+      //   printf("---START--TENSOR----");
+      //   printf("warp_id: %d\n", cur_warp_id);
+      //   printf(" tmp_tensor_gpu_sim_cycle[cur_warp_id] %llu\n",
+      //   tmp_tensor_gpu_sim_cycle[cur_warp_id]); printf("START:
+      //   tmp_tensor_gpu_sim_cycle: %d\n",
+      //          m_pipeline_reg[start_stage]->op);  // out
+      //   // printf(" Num of Tensor Core Op: %llu\n", m_num_of_tensor_core_op);
+      // }else if(m_pipeline_reg[start_stage]->op == SP_OP){
+      //   tmp_sp_gpu_sim_cycle[cur_warp_id] = exp_gpu_sim_cycle;
+      //   printf("---START--SP----");
+      //   printf("warp_id: %d\n", cur_warp_id);
+      //   printf(" tmp_sp_gpu_sim_cycle[cur_warp_id] %llu\n",
+      //   tmp_sp_gpu_sim_cycle[cur_warp_id]); printf("START:
+      //   tmp_SP_gpu_sim_cycle: %d\n",
+      //          m_pipeline_reg[start_stage]->op);  // out
+
+      // }
     }
   }
   occupied >>= 1;
@@ -3086,68 +3350,68 @@ void warp_inst_t::print(FILE *fout) const {
   m_config->gpgpu_ctx->func_sim->ptx_print_insn(pc, fout);
   fprintf(fout, "\n");
 }
-void shader_core_ctx::incexecstat(warp_inst_t *&inst)
-{
-    // Latency numbers for next operations are used to scale the power values
-    // for special operations, according observations from microbenchmarking
-    // TODO: put these numbers in the xml configuration
-  if(get_gpu()->get_config().g_power_simulation_enabled){
-    switch(inst->sp_op){
-    case INT__OP:
-      incialu_stat(inst->active_count(), scaling_coeffs->int_coeff);
-      break;
-    case INT_MUL_OP:
-      incimul_stat(inst->active_count(), scaling_coeffs->int_mul_coeff);
-      break;
-    case INT_MUL24_OP:
-      incimul24_stat(inst->active_count(), scaling_coeffs->int_mul24_coeff);
-      break;
-    case INT_MUL32_OP:
-      incimul32_stat(inst->active_count(), scaling_coeffs->int_mul32_coeff);
-      break;
-    case INT_DIV_OP:
-      incidiv_stat(inst->active_count(), scaling_coeffs->int_div_coeff);
-      break;
-    case FP__OP:
-      incfpalu_stat(inst->active_count(),scaling_coeffs->fp_coeff);
-      break;
-    case FP_MUL_OP:
-      incfpmul_stat(inst->active_count(), scaling_coeffs->fp_mul_coeff);
-      break;
-    case FP_DIV_OP:
-      incfpdiv_stat(inst->active_count(), scaling_coeffs->fp_div_coeff);
-      break;
-    case DP___OP:
-      incdpalu_stat(inst->active_count(), scaling_coeffs->dp_coeff);
-      break;
-    case DP_MUL_OP:
-      incdpmul_stat(inst->active_count(), scaling_coeffs->dp_mul_coeff);
-      break;
-    case DP_DIV_OP:
-      incdpdiv_stat(inst->active_count(), scaling_coeffs->dp_div_coeff);
-      break;
-    case FP_SQRT_OP:
-      incsqrt_stat(inst->active_count(), scaling_coeffs->sqrt_coeff);
-      break;
-    case FP_LG_OP:
-      inclog_stat(inst->active_count(), scaling_coeffs->log_coeff);
-      break;
-    case FP_SIN_OP:
-      incsin_stat(inst->active_count(), scaling_coeffs->sin_coeff);
-      break;
-    case FP_EXP_OP:
-      incexp_stat(inst->active_count(), scaling_coeffs->exp_coeff);
-      break;
-    case TENSOR__OP:
-      inctensor_stat(inst->active_count(), scaling_coeffs->tensor_coeff);
-      break;
-    case TEX__OP:
-      inctex_stat(inst->active_count(), scaling_coeffs->tex_coeff);
-      break;
-    default:
-      break;
+void shader_core_ctx::incexecstat(warp_inst_t *&inst) {
+  // Latency numbers for next operations are used to scale the power values
+  // for special operations, according observations from microbenchmarking
+  // TODO: put these numbers in the xml configuration
+  if (get_gpu()->get_config().g_power_simulation_enabled) {
+    switch (inst->sp_op) {
+      case INT__OP:
+        incialu_stat(inst->active_count(), scaling_coeffs->int_coeff);
+        break;
+      case INT_MUL_OP:
+        incimul_stat(inst->active_count(), scaling_coeffs->int_mul_coeff);
+        break;
+      case INT_MUL24_OP:
+        incimul24_stat(inst->active_count(), scaling_coeffs->int_mul24_coeff);
+        break;
+      case INT_MUL32_OP:
+        incimul32_stat(inst->active_count(), scaling_coeffs->int_mul32_coeff);
+        break;
+      case INT_DIV_OP:
+        incidiv_stat(inst->active_count(), scaling_coeffs->int_div_coeff);
+        break;
+      case FP__OP:
+        incfpalu_stat(inst->active_count(), scaling_coeffs->fp_coeff);
+        break;
+      case FP_MUL_OP:
+        incfpmul_stat(inst->active_count(), scaling_coeffs->fp_mul_coeff);
+        break;
+      case FP_DIV_OP:
+        incfpdiv_stat(inst->active_count(), scaling_coeffs->fp_div_coeff);
+        break;
+      case DP___OP:
+        incdpalu_stat(inst->active_count(), scaling_coeffs->dp_coeff);
+        break;
+      case DP_MUL_OP:
+        incdpmul_stat(inst->active_count(), scaling_coeffs->dp_mul_coeff);
+        break;
+      case DP_DIV_OP:
+        incdpdiv_stat(inst->active_count(), scaling_coeffs->dp_div_coeff);
+        break;
+      case FP_SQRT_OP:
+        incsqrt_stat(inst->active_count(), scaling_coeffs->sqrt_coeff);
+        break;
+      case FP_LG_OP:
+        inclog_stat(inst->active_count(), scaling_coeffs->log_coeff);
+        break;
+      case FP_SIN_OP:
+        incsin_stat(inst->active_count(), scaling_coeffs->sin_coeff);
+        break;
+      case FP_EXP_OP:
+        incexp_stat(inst->active_count(), scaling_coeffs->exp_coeff);
+        break;
+      case TENSOR__OP:
+        inctensor_stat(inst->active_count(), scaling_coeffs->tensor_coeff);
+        break;
+      case TEX__OP:
+        inctex_stat(inst->active_count(), scaling_coeffs->tex_coeff);
+        break;
+      default:
+        break;
     }
-    if(inst->const_cache_operand) //warp has const address space load as one operand
+    if (inst->const_cache_operand)  // warp has const address space load as one
+                                    // operand
       inc_const_accesses(1);
   }
 }
@@ -3489,10 +3753,14 @@ void shader_core_config::set_pipeline_latency() {
   max_tensor_core_latency = tensor_latency;
 }
 
+//! SIMT core execution flow
+// This function advances the state of the shader core by one cycle,
+// sequentially progressing through various pipeline stages: writeback, execute,
+// read operands, issue, decode, and fetch.
 void shader_core_ctx::cycle() {
   if (!isactive() && get_not_completed() == 0) return;
 
-  m_stats->shader_cycles[m_sid]++;
+  m_stats->shader_cycles[m_sid]++;  // not use this counter in other locations
   writeback();
   execute();
   read_operands();
@@ -4022,7 +4290,7 @@ void opndcoll_rfu_t::init(unsigned num_banks, shader_core_ctx *shader) {
                   sub_core_model, reg_id, m_num_banks_per_sched);
   }
   for (unsigned j = 0; j < m_dispatch_units.size(); j++) {
-    m_dispatch_units[j].init(sub_core_model,m_num_warp_scheds);
+    m_dispatch_units[j].init(sub_core_model, m_num_warp_scheds);
   }
   m_initialized = true;
 }
@@ -4290,7 +4558,11 @@ simt_core_cluster::simt_core_cluster(class gpgpu_sim *gpu, unsigned cluster_id,
   m_memory_stats = mstats;
   m_mem_config = mem_config;
 }
-
+/*SIMT Core Cluster clock domain = frequency of the pipeline stages in a core
+ * clock (i.e. the rate at which simt_core_cluster::core_cycle() is called)
+ */
+//! simulation a cycle in each core,RR
+//! cycles each of the SIMT cores in order.
 void simt_core_cluster::core_cycle() {
   for (std::list<unsigned>::iterator it = m_core_sim_order.begin();
        it != m_core_sim_order.end(); ++it) {
@@ -4350,6 +4622,8 @@ unsigned simt_core_cluster::get_n_active_sms() const {
   return n;
 }
 
+//! Issue a warp-level CUDA thread to the core on cluster
+//! find kernel scheduler
 unsigned simt_core_cluster::issue_block2core() {
   unsigned num_blocks_issued = 0;
   for (unsigned i = 0; i < m_config->n_simt_cores_per_cluster; i++) {
@@ -4470,11 +4744,20 @@ void simt_core_cluster::icnt_inject_request_packet(class mem_fetch *mf) {
     ::icnt_push(m_cluster_id, m_config->mem2device(destination), (void *)mf,
                 mf->size());
 }
-
+/*icnt_cycle(): pushes memory requests into the SIMT Core Cluster's response
+ * FIFO from the interconnection network. It also pops the requests from the
+ * FIFO and sends them to the appropriate core's instruction cache or LDST unit
+ */
 void simt_core_cluster::icnt_cycle() {
+  // Checking and Handling Response FIFO Queue
   if (!m_response_fifo.empty()) {
     mem_fetch *mf = m_response_fifo.front();
     unsigned cid = m_config->sid_to_cid(mf->get_sid());
+    // INST_ACC_R => "Instruction Access for Read"
+    // If the response is for an instruction fetch (INST_ACC_R), it checks if
+    // the fetch unit's response buffer in the target core is not full. If
+    // there's space, the response is removed from the FIFO and passed to the
+    // core for processing.
     if (mf->get_access_type() == INST_ACC_R) {
       // instruction fetch response
       if (!m_core[cid]->fetch_unit_response_buffer_full()) {
@@ -4483,6 +4766,10 @@ void simt_core_cluster::icnt_cycle() {
       }
     } else {
       // data response
+      // If the response is for data access (e.g., load/store operations), a
+      // similar check is done for the load/store unit's response buffer. If
+      // there's space, the response is processed, and relevant memory
+      // statistics are updated
       if (!m_core[cid]->ldst_unit_response_buffer_full()) {
         m_response_fifo.pop_front();
         m_memory_stats->memlatstat_read_done(mf);
@@ -4490,6 +4777,7 @@ void simt_core_cluster::icnt_cycle() {
       }
     }
   }
+  // Populating the Response FIFO from the Interconnect
   if (m_response_fifo.size() < m_config->n_simt_ejection_buffer_size) {
     mem_fetch *mf = (mem_fetch *)::icnt_pop(m_cluster_id);
     if (!mf) return;

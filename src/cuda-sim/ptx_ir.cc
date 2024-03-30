@@ -6,12 +6,13 @@
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 //
-// 1. Redistributions of source code must retain the above copyright notice, this
+// 1. Redistributions of source code must retain the above copyright notice,
+// this
 //    list of conditions and the following disclaimer;
 // 2. Redistributions in binary form must reproduce the above copyright notice,
 //    this list of conditions and the following disclaimer in the documentation
 //    and/or other materials provided with the distribution;
-// 3. Neither the names of The University of British Columbia, Northwestern 
+// 3. Neither the names of The University of British Columbia, Northwestern
 //    University nor the names of their contributors may be used to
 //    endorse or promote products derived from this software without specific
 //    prior written permission.
@@ -1385,7 +1386,7 @@ ptx_instruction::ptx_instruction(
       case CS_OPTION:
       case LU_OPTION:
       case CV_OPTION:
-      case WB_OPTION: 
+      case WB_OPTION:
       case WT_OPTION:
         m_cache_option = last_ptx_inst_option;
         break;
@@ -1530,7 +1531,10 @@ unsigned function_info::print_insn(unsigned pc, FILE *fp) const {
   return inst_size;
 }
 
-std::string function_info::get_insn_str(unsigned pc) const {
+//! get the instruction string
+
+// std::string function_info::get_insn_str(unsigned pc) const {
+std::string function_info::get_insn_str(unsigned pc) {
   unsigned index = pc - m_start_PC;
   if (index >= m_instr_mem_size) {
     char buff[STR_SIZE];
@@ -1540,7 +1544,12 @@ std::string function_info::get_insn_str(unsigned pc) const {
     return std::string(buff);
   } else {
     if (m_instr_mem[index] != NULL) {
-      return m_instr_mem[index]->to_string();
+      // ! test
+      std::string instr_str = m_instr_mem[index]->to_string();
+      // is_wmma_instruction =
+      //     (instr_str.find("wmma") == std::string::npos) ? false : true;
+
+      return instr_str;
     } else {
       char buff[STR_SIZE];
       buff[STR_SIZE - 1] = '\0';

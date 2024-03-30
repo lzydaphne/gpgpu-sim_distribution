@@ -1,16 +1,17 @@
-// Copyright (c) 2009-2021, Tor M. Aamodt, Inderpreet Singh, Timothy Rogers, Vijay Kandiah, Nikos Hardavellas
-// The University of British Columbia, Northwestern University
-// All rights reserved.
+// Copyright (c) 2009-2021, Tor M. Aamodt, Inderpreet Singh, Timothy Rogers,
+// Vijay Kandiah, Nikos Hardavellas The University of British Columbia,
+// Northwestern University All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 //
-// 1. Redistributions of source code must retain the above copyright notice, this
+// 1. Redistributions of source code must retain the above copyright notice,
+// this
 //    list of conditions and the following disclaimer;
 // 2. Redistributions in binary form must reproduce the above copyright notice,
 //    this list of conditions and the following disclaimer in the documentation
 //    and/or other materials provided with the distribution;
-// 3. Neither the names of The University of British Columbia, Northwestern 
+// 3. Neither the names of The University of British Columbia, Northwestern
 //    University nor the names of their contributors may be used to
 //    endorse or promote products derived from this software without specific
 //    prior written permission.
@@ -27,7 +28,6 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-
 #include "abstract_hardware_model.h"
 #include <sys/stat.h>
 #include <algorithm>
@@ -41,6 +41,12 @@
 #include "gpgpu-sim/gpu-sim.h"
 #include "gpgpusim_entrypoint.h"
 #include "option_parser.h"
+
+unsigned long long exp_gpu_sim_cycle = 0;
+unsigned long long tensor_gpu_sim_cycle = 0;
+std::vector<unsigned long long> tmp_tensor_gpu_sim_cycle(32, 0);
+unsigned long long sp_gpu_sim_cycle = 0;
+std::vector<unsigned long long> tmp_sp_gpu_sim_cycle(32, 0);
 
 void mem_access_t::init(gpgpu_context *ctx) {
   gpgpu_ctx = ctx;
@@ -283,7 +289,7 @@ void warp_inst_t::broadcast_barrier_reduction(
 void warp_inst_t::generate_mem_accesses() {
   if (empty() || op == MEMORY_BARRIER_OP || m_mem_accesses_created) return;
   if (!((op == LOAD_OP) || (op == TENSOR_CORE_LOAD_OP) || (op == STORE_OP) ||
-        (op == TENSOR_CORE_STORE_OP) ))
+        (op == TENSOR_CORE_STORE_OP)))
     return;
   if (m_warp_active_mask.count() == 0) return;  // predicated off
 
@@ -291,8 +297,8 @@ void warp_inst_t::generate_mem_accesses() {
 
   assert(is_load() || is_store());
 
-  //if((space.get_type() != tex_space) && (space.get_type() != const_space))
-    assert(m_per_scalar_thread_valid);  // need address information per thread
+  // if((space.get_type() != tex_space) && (space.get_type() != const_space))
+  assert(m_per_scalar_thread_valid);  // need address information per thread
 
   bool is_write = is_store();
 
@@ -814,6 +820,8 @@ kernel_info_t::kernel_info_t(
 
 kernel_info_t::~kernel_info_t() {
   assert(m_active_threads.empty());
+  //! destroy the streams
+  printf("Destroy streams for kernel %d: ", get_uid());
   destroy_cta_streams();
   delete m_param_mem;
 }

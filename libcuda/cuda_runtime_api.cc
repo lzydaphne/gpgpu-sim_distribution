@@ -133,16 +133,16 @@
 #if (CUDART_VERSION < 8000)
 #include "__cudaFatFormat.h"
 #endif
-#include "gpgpu_context.h"
-#include "cuda_api_object.h"
-#include "../src/gpgpu-sim/gpu-sim.h"
-#include "../src/cuda-sim/ptx_loader.h"
+#include "../src/abstract_hardware_model.h"
 #include "../src/cuda-sim/cuda-sim.h"
 #include "../src/cuda-sim/ptx_ir.h"
+#include "../src/cuda-sim/ptx_loader.h"
 #include "../src/cuda-sim/ptx_parser.h"
+#include "../src/gpgpu-sim/gpu-sim.h"
 #include "../src/gpgpusim_entrypoint.h"
 #include "../src/stream_manager.h"
-#include "../src/abstract_hardware_model.h"
+#include "cuda_api_object.h"
+#include "gpgpu_context.h"
 
 #include <pthread.h>
 #include <semaphore.h>
@@ -234,6 +234,8 @@ struct _cuda_device_id *gpgpu_context::GPGPUSim_Init() {
 #if (CUDART_VERSION >= 4000)
     prop->maxThreadsPerMultiProcessor = the_gpu->threads_per_core();
 #endif
+    //! add concurrent support
+    prop->concurrentKernels = 2;
     the_gpu->set_prop(prop);
     the_gpgpusim->the_cude_device = new _cuda_device_id(the_gpu);
     the_device = the_gpgpusim->the_cude_device;
@@ -926,6 +928,7 @@ cudaError_t cudaLaunchInternal(const char *hostFun,
   if (mode) sscanf(mode, "%u", &(ctx->func_sim->g_ptx_sim_mode));
   gpgpusim_ptx_assert(!ctx->api->g_cuda_launch_stack.empty(),
                       "empty launch stack");
+  //! kernel launch
   kernel_config config = ctx->api->g_cuda_launch_stack.back();
   {
     dim3 gridDim = config.grid_dim();
@@ -938,6 +941,7 @@ cudaError_t cudaLaunchInternal(const char *hostFun,
       return g_last_cudaError = cudaErrorInvalidConfiguration;
     }
   }
+  //! stream
   struct CUstream_st *stream = config.get_stream();
 
   printf("\nGPGPU-Sim PTX: cudaLaunch for 0x%p (mode=%s) on stream %u\n",
@@ -945,6 +949,7 @@ cudaError_t cudaLaunchInternal(const char *hostFun,
          (ctx->func_sim->g_ptx_sim_mode) ? "functional simulation"
                                          : "performance simulation",
          stream ? stream->get_uid() : 0);
+  //!
   kernel_info_t *grid = ctx->api->gpgpu_cuda_ptx_sim_init_grid(
       hostFun, config.get_args(), config.grid_dim(), config.block_dim(),
       context);
@@ -1228,7 +1233,7 @@ __host__ cudaError_t CUDARTAPI cudaMemcpyToArrayInternal(
     gpu->memcpy_gpu_to_gpu((size_t)(dst->devPtr), (size_t)src, size);
   else {
     printf(
-        "GPGPU-Sim PTX: cudaMemcpyToArray - ERROR : unsupported "
+        "c: cudaMemcpyToArray - ERROR : unsupported "
         "cudaMemcpyKind\n");
     abort();
   }
@@ -2982,7 +2987,7 @@ __host__ cudaError_t CUDARTAPI cudaGetExportTable(
  *                                                                              *
  *******************************************************************************/
 
-//#include "../../cuobjdump_to_ptxplus/cuobjdump_parser.h"
+// #include "../../cuobjdump_to_ptxplus/cuobjdump_parser.h"
 
 // extracts all ptx files from binary and dumps into
 // prog_name.unique_no.sm_<>.ptx files
@@ -3820,9 +3825,9 @@ __host__ cudaError_t CUDARTAPI cudaDeviceSetLimit(enum cudaLimit limit,
   return g_last_cudaError = cudaSuccess;
 }
 
-//#if CUDART_VERSION >= 9000
+// #if CUDART_VERSION >= 9000
 //__host__  cudaError_t cudaFuncSetAttribute ( const void* func, enum
-// cudaFuncAttribute attr, int value ) {
+//  cudaFuncAttribute attr, int value ) {
 
 // ignore this Attribute for now, and the default is that carveout =
 // cudaSharedmemCarveoutDefault;   //  (-1)

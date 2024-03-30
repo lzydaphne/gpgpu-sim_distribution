@@ -1,5 +1,8 @@
+set auto-load safe-path /
+
 # Provides some useful debugging macros.  To use this file, copy to your home
 # directory or to your simulation directory then run GPGPU-Sim in gdb.
+add-auto-load-safe-path /home/lzydaphne/CUDAsample/.gdbinit
 
 printf "\n  ** loading GPGPU-Sim debugging macros... ** \n\n"
 

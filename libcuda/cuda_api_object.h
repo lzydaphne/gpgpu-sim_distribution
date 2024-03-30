@@ -34,9 +34,7 @@ struct _cuda_device_id {
     m_next = NULL;
     m_gpgpu = gpu;
   }
-  struct _cuda_device_id *next() {
-    return m_next;
-  }
+  struct _cuda_device_id *next() { return m_next; }
   unsigned num_shader() const { return m_gpgpu->get_config().num_shader(); }
   int num_devices() const {
     if (m_next == NULL)
@@ -110,6 +108,7 @@ struct CUctx_st {
     }
   }
 
+  //! not yet used?
   void register_hostFun_function(const char *hostFun, function_info *f) {
     m_kernel_lookup[hostFun] = f;
   }
@@ -134,6 +133,7 @@ struct CUctx_st {
   struct gpgpu_ptx_sim_info m_binary_info;
 };
 
+//!
 class kernel_config {
  public:
   kernel_config(dim3 GridDim, dim3 BlockDim, size_t sharedMem,
@@ -148,6 +148,7 @@ class kernel_config {
     m_BlockDim = dim3(-1, -1, -1);
     m_sharedMem = 0;
     m_stream = NULL;
+    // m_stream = NULL;
   }
   void set_arg(const void *arg, size_t size, size_t offset) {
     m_args.push_front(gpgpu_ptx_sim_arg(arg, size, offset));
@@ -157,9 +158,7 @@ class kernel_config {
   void set_grid_dim(dim3 *d) { m_GridDim = *d; }
   void set_block_dim(dim3 *d) { m_BlockDim = *d; }
   gpgpu_ptx_sim_arg_list_t get_args() { return m_args; }
-  struct CUstream_st *get_stream() {
-    return m_stream;
-  }
+  struct CUstream_st *get_stream() { return m_stream; }
 
  private:
   dim3 m_GridDim;

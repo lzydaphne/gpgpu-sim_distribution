@@ -6,12 +6,13 @@
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 //
-// 1. Redistributions of source code must retain the above copyright notice, this
+// 1. Redistributions of source code must retain the above copyright notice,
+// this
 //    list of conditions and the following disclaimer;
 // 2. Redistributions in binary form must reproduce the above copyright notice,
 //    this list of conditions and the following disclaimer in the documentation
 //    and/or other materials provided with the distribution;
-// 3. Neither the names of The University of British Columbia, Northwestern 
+// 3. Neither the names of The University of British Columbia, Northwestern
 //    University nor the names of their contributors may be used to
 //    endorse or promote products derived from this software without specific
 //    prior written permission.
@@ -55,6 +56,7 @@ typedef void *yyscan_t;
 #include "ptx_sim.h"
 
 int g_debug_execution = 0;
+bool is_wmma_instruction = false;
 // Output debug information to file options
 
 void cuda_sim::ptx_opcocde_latency_options(option_parser_t opp) {
@@ -552,6 +554,7 @@ void cuda_sim::ptx_print_insn(address_type pc, FILE *fp) {
   finfo->print_insn(pc, fp);
 }
 
+//! get the instruction string for a given PC
 std::string cuda_sim::ptx_get_insn_str(address_type pc) {
   std::map<unsigned, function_info *>::iterator f = g_pc_to_finfo.find(pc);
   if (f == g_pc_to_finfo.end()) {
@@ -563,7 +566,19 @@ std::string cuda_sim::ptx_get_insn_str(address_type pc) {
   }
   function_info *finfo = f->second;
   assert(finfo);
-  return finfo->get_insn_str(pc);
+  std::string instr_str = finfo->get_insn_str(pc);
+  // printf("instr_str: %s\n", instr_str.c_str());
+
+  // Extract substring before the first '[' if it exists
+  size_t bracketPos = instr_str.find('[');
+  std::string instr_substr = (bracketPos != std::string::npos)
+                                 ? instr_str.substr(0, bracketPos)
+                                 : instr_str;
+  // is_wmma_instruction =
+  //     (instr_substr.find("wmma") == std::string::npos) ? false : true;
+  // printf("is_wmma_instruction: %d\n", is_wmma_instruction);
+  // return finfo->get_insn_str(pc);
+  return instr_str;
 }
 
 void ptx_instruction::set_fp_or_int_archop() {
@@ -590,118 +605,118 @@ void ptx_instruction::set_fp_or_int_archop() {
   }
 }
 
-void ptx_instruction::set_mul_div_or_other_archop(){
-  sp_op=OTHER_OP;
-  if((m_opcode != MEMBAR_OP) && (m_opcode != SSY_OP) && (m_opcode != BRA_OP) && (m_opcode != BAR_OP) && (m_opcode != EXIT_OP) && (m_opcode != NOP_OP) && (m_opcode != RETP_OP) && (m_opcode != RET_OP) && (m_opcode != CALLP_OP) && (m_opcode != CALL_OP)){
-    if(get_type() == F64_TYPE || get_type() == FF64_TYPE){
-         switch(get_opcode()){
-            case MUL_OP:
-            case MAD_OP:
-            case FMA_OP:
-                sp_op=DP_MUL_OP;
-               break;
-            case DIV_OP:
-            case REM_OP:
-                sp_op=DP_DIV_OP;
-               break;
-            case RCP_OP:
-                sp_op=DP_DIV_OP;
-               break;
-            case LG2_OP:
-                sp_op=FP_LG_OP;
-               break;
-            case RSQRT_OP:
-            case SQRT_OP:
-                sp_op=FP_SQRT_OP;
-               break;            
-            case SIN_OP:
-            case COS_OP:
-                sp_op=FP_SIN_OP;
-               break;
-            case EX2_OP:
-                sp_op=FP_EXP_OP;
-               break;
-            case MMA_OP:
-                sp_op=TENSOR__OP;
-            break;
-            case TEX_OP:
-                sp_op=TEX__OP;
-            break;
-            default:
-               if((op==DP_OP) || (op==ALU_OP))
-                  sp_op=DP___OP;
-               break;
-         }
+void ptx_instruction::set_mul_div_or_other_archop() {
+  sp_op = OTHER_OP;
+  if ((m_opcode != MEMBAR_OP) && (m_opcode != SSY_OP) && (m_opcode != BRA_OP) &&
+      (m_opcode != BAR_OP) && (m_opcode != EXIT_OP) && (m_opcode != NOP_OP) &&
+      (m_opcode != RETP_OP) && (m_opcode != RET_OP) && (m_opcode != CALLP_OP) &&
+      (m_opcode != CALL_OP)) {
+    if (get_type() == F64_TYPE || get_type() == FF64_TYPE) {
+      switch (get_opcode()) {
+        case MUL_OP:
+        case MAD_OP:
+        case FMA_OP:
+          sp_op = DP_MUL_OP;
+          break;
+        case DIV_OP:
+        case REM_OP:
+          sp_op = DP_DIV_OP;
+          break;
+        case RCP_OP:
+          sp_op = DP_DIV_OP;
+          break;
+        case LG2_OP:
+          sp_op = FP_LG_OP;
+          break;
+        case RSQRT_OP:
+        case SQRT_OP:
+          sp_op = FP_SQRT_OP;
+          break;
+        case SIN_OP:
+        case COS_OP:
+          sp_op = FP_SIN_OP;
+          break;
+        case EX2_OP:
+          sp_op = FP_EXP_OP;
+          break;
+        case MMA_OP:
+          sp_op = TENSOR__OP;
+          break;
+        case TEX_OP:
+          sp_op = TEX__OP;
+          break;
+        default:
+          if ((op == DP_OP) || (op == ALU_OP)) sp_op = DP___OP;
+          break;
       }
-      else if(get_type()==F16_TYPE || get_type()==F32_TYPE){
-         switch(get_opcode()){
-            case MUL_OP:
-            case MAD_OP:
-            case FMA_OP:
-                sp_op=FP_MUL_OP;
-               break;
-            case DIV_OP:
-            case REM_OP:
-                sp_op=FP_DIV_OP;
-               break;
-            case RCP_OP:
-                sp_op=FP_DIV_OP;
-               break;
-            case LG2_OP:
-                sp_op=FP_LG_OP;
-               break;
-            case RSQRT_OP:
-            case SQRT_OP:
-                sp_op=FP_SQRT_OP;
-               break;            
-            case SIN_OP:
-            case COS_OP:
-                sp_op=FP_SIN_OP;
-               break;
-            case EX2_OP:
-                sp_op=FP_EXP_OP;
-               break;
-            case MMA_OP:
-                sp_op=TENSOR__OP;
-            break;
-            case TEX_OP:
-                sp_op=TEX__OP;
-            break;
-            default:
-               if((op==SP_OP) || (op==ALU_OP))
-                  sp_op=FP__OP;
-               break;
-         }
-      }else {
-         switch(get_opcode()){
-            case MUL24_OP:
-            case MAD24_OP:
-                sp_op=INT_MUL24_OP;
-            break;
-            case MUL_OP:
-            case MAD_OP:
-            case FMA_OP:
-               if(get_type()==U32_TYPE || get_type()==S32_TYPE || get_type()==B32_TYPE)
-                   sp_op=INT_MUL32_OP;
-               else
-                   sp_op=INT_MUL_OP;
-            break;
-            case DIV_OP:
-            case REM_OP:
-                sp_op=INT_DIV_OP;
-            break;
-            case MMA_OP:
-                sp_op=TENSOR__OP;
-            break;
-            case TEX_OP:
-                sp_op=TEX__OP;
-            break;
-            default:
-               if((op==INTP_OP) || (op==ALU_OP))
-                   sp_op=INT__OP;
-               break;
-         }
+    } else if (get_type() == F16_TYPE || get_type() == F32_TYPE) {
+      switch (get_opcode()) {
+        case MUL_OP:
+        case MAD_OP:
+        case FMA_OP:
+          sp_op = FP_MUL_OP;
+          break;
+        case DIV_OP:
+        case REM_OP:
+          sp_op = FP_DIV_OP;
+          break;
+        case RCP_OP:
+          sp_op = FP_DIV_OP;
+          break;
+        case LG2_OP:
+          sp_op = FP_LG_OP;
+          break;
+        case RSQRT_OP:
+        case SQRT_OP:
+          sp_op = FP_SQRT_OP;
+          break;
+        case SIN_OP:
+        case COS_OP:
+          sp_op = FP_SIN_OP;
+          break;
+        case EX2_OP:
+          sp_op = FP_EXP_OP;
+          break;
+        case MMA_OP:
+          sp_op = TENSOR__OP;
+          break;
+        case TEX_OP:
+          sp_op = TEX__OP;
+          break;
+        default:
+          if ((op == SP_OP) || (op == ALU_OP)) sp_op = FP__OP;
+          break;
       }
+    } else {
+      switch (get_opcode()) {
+        case MUL24_OP:
+        case MAD24_OP:
+          sp_op = INT_MUL24_OP;
+          break;
+        case MUL_OP:
+        case MAD_OP:
+        case FMA_OP:
+          if (get_type() == U32_TYPE || get_type() == S32_TYPE ||
+              get_type() == B32_TYPE)
+            sp_op = INT_MUL32_OP;
+          else
+            sp_op = INT_MUL_OP;
+          break;
+        case DIV_OP:
+        case REM_OP:
+          sp_op = INT_DIV_OP;
+          break;
+        case MMA_OP:
+          sp_op = TENSOR__OP;
+          break;
+        case TEX_OP:
+          sp_op = TEX__OP;
+          break;
+        default:
+          if ((op == INTP_OP) || (op == ALU_OP)) sp_op = INT__OP;
+          break;
+      }
+    }
   }
 }
 
@@ -959,14 +974,16 @@ void ptx_instruction::set_opcode_and_latency() {
           break;
       }
       break;
-    case MUL24_OP: //MUL24 is performed on mul32 units (with additional instructions for bitmasking) on devices with compute capability >1.x
-      latency = int_latency[2]+1;
-      initiation_interval = int_init[2]+1;
+    case MUL24_OP:  // MUL24 is performed on mul32 units (with additional
+                    // instructions for bitmasking) on devices with compute
+                    // capability >1.x
+      latency = int_latency[2] + 1;
+      initiation_interval = int_init[2] + 1;
       op = INTP_OP;
       break;
     case MAD24_OP:
-      latency = int_latency[3]+1;
-      initiation_interval = int_init[3]+1;
+      latency = int_latency[3] + 1;
+      initiation_interval = int_init[3] + 1;
       op = INTP_OP;
       break;
     case DIV_OP:
@@ -1760,6 +1777,17 @@ int tensorcore_op(int inst_opcode) {
   else
     return 0;
 }
+/**
+ * Executes a PTX instruction.
+ *
+ * @param inst The warp instruction to execute
+ * @param lane_id The id of the lane within the warp
+ *
+ * @return void
+ *
+ * @throws int Throws an integer error if there's an exception while executing
+ * the instruction
+ */
 void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
   bool skip = false;
   int op_classification = 0;
@@ -2743,9 +2771,7 @@ void print_ptxinfo() {
   }
 }
 
-struct gpgpu_ptx_sim_info get_ptxinfo() {
-  return g_ptxinfo;
-}
+struct gpgpu_ptx_sim_info get_ptxinfo() { return g_ptxinfo; }
 
 std::map<unsigned, const char *> get_duplicate() { return g_duplicate; }
 
