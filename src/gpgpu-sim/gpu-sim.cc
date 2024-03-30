@@ -882,6 +882,11 @@ kernel_info_t *gpgpu_sim::select_kernel() {
         (n + m_last_issued_kernel + 1) % m_config.max_concurrent_kernel;
     if (kernel_more_cta_left(m_running_kernels[idx]) &&
         !m_running_kernels[idx]->m_kernel_TB_latency) { 
+
+      /*Selecting a new kernel to execute: 
+      Upon finding a suitable kernel, the function updates m_last_issued_kernel to the index of this newly selected kernel, 
+      sets its start cycle, and records its execution as done by pushing its UID and name to the respective lists. 
+      This kernel is then returned for execution.*/
       m_last_issued_kernel = idx;
       m_running_kernels[idx]->start_cycle = gpu_sim_cycle + gpu_tot_sim_cycle;
       // record this kernel for stat print if it is the first time this kernel
