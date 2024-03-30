@@ -279,19 +279,16 @@ int main(int argc, char *argv[])
 //    cudaErrCheck(cudaMemcpy(d_C, h_C, size, cudaMemcpyHostToDevice));
 
 
-//    cudaStream_t stream1, stream2;
-//    cudaStreamCreate(&stream1);
-//    cudaStreamCreate(&stream2);
 
 
    cudaEvent_t startWMMA, startMatrix;
    cudaEvent_t stopWMMA, stopMatrix;
 
 
-   cudaErrCheck(cudaEventCreate(&startWMMA));
-   cudaErrCheck(cudaEventCreate(&stopWMMA));
-   cudaErrCheck(cudaEventCreate(&startMatrix));
-   cudaErrCheck(cudaEventCreate(&stopMatrix));
+   // cudaErrCheck(cudaEventCreate(&startWMMA));
+   // cudaErrCheck(cudaEventCreate(&stopWMMA));
+   // cudaErrCheck(cudaEventCreate(&startMatrix));
+   // cudaErrCheck(cudaEventCreate(&stopMatrix));
 
 
 //    cudaErrCheck(cudaMalloc((void **)&a_fp32, MATRIX_M * MATRIX_K * sizeof(float)));
@@ -367,7 +364,8 @@ int main(int argc, char *argv[])
    gridDim.y = (MATRIX_N + WMMA_N * blockDim.y - 1) / (WMMA_N * blockDim.y);
    printf("gridDim.x = %d, gridDim.y = %d\n", gridDim.x, gridDim.y);
 
-   cudaErrCheck(cudaEventRecord(startWMMA,streams[2]));
+   // cudaErrCheck(cudaEventRecord(startWMMA));
+   // cudaErrCheck(cudaEventRecord(startWMMA,streams[2]));
    // wmma_example<<<gridDim, blockDim>>>(a_fp16, b_fp16, c_wmma, MATRIX_M, MATRIX_N, MATRIX_K, alpha, beta);
    // matrixMulKernel<<<gridDim, blockDim>>>(d_A, d_B, d_C, N);
    
@@ -378,11 +376,14 @@ int main(int argc, char *argv[])
    // cudaDeviceSynchronize();
 
    wmma_example<<<gridDim, blockDim, 0, streams[2]>>>(a_fp16, b_fp16, d_C, MATRIX_M, MATRIX_N, MATRIX_K, alpha, beta);
-   cudaErrCheck(cudaEventRecord(stopWMMA,streams[2]));
+   // cudaErrCheck(cudaEventRecord(stopWMMA));
+   // cudaErrCheck(cudaEventRecord(stopWMMA,streams[2]));
    printf("Running with cudaEventSynchronize...\n");
-   cudaErrCheck(cudaEventSynchronize(stopWMMA));
+   
+   // cudaErrCheck(cudaEventSynchronize(stopWMMA));
+
    printf("Running with cudaEventSynchronize-end...\n");
-   cudaErrCheck(cudaEventElapsedTime(&elapsed_time, startWMMA, stopWMMA));
+   // cudaErrCheck(cudaEventElapsedTime(&elapsed_time, startWMMA, stopWMMA));
    printf("Measured time for sample = %.3f ms\n", elapsed_time);
 //    printf("Running with wmma...done\n");
 
@@ -410,7 +411,8 @@ int main(int argc, char *argv[])
    //* sequential
 //    cudaErrCheck(cudaMemcpy(h_C, d_C, size, cudaMemcpyDeviceToHost));
    //! concurrent
-   cudaErrCheck(cudaMemcpyAsync(h_C, d_C, size, cudaMemcpyDeviceToHost,streams[nstreams - 1]));
+   cudaErrCheck(cudaMemcpy(h_C, d_C, size,cudaMemcpyDeviceToHost));
+   // cudaErrCheck(cudaMemcpyAsync(h_C, d_C, size, cudaMemcpyDeviceToHost,streams[nstreams - 1]));
    //    cudaErrCheck(cudaMemcpy(c_host_cublas, c_cublas, MATRIX_M * MATRIX_N * sizeof(float), cudaMemcpyDeviceToHost));
 
 
@@ -419,10 +421,10 @@ int main(int argc, char *argv[])
    cudaStreamDestroy(streams[2]);
    free(streams);
 
-   cudaErrCheck(cudaEventDestroy(startWMMA));
-   cudaErrCheck(cudaEventDestroy(stopWMMA));
-   cudaErrCheck(cudaEventDestroy(startMatrix));
-   cudaErrCheck(cudaEventDestroy(stopMatrix));
+   // cudaErrCheck(cudaEventDestroy(startWMMA));
+   // cudaErrCheck(cudaEventDestroy(stopWMMA));
+   // cudaErrCheck(cudaEventDestroy(startMatrix));
+   // cudaErrCheck(cudaEventDestroy(stopMatrix));
 
     //   cudaErrCheck(cudaEventDestroy(startcublas));
     //   cudaErrCheck(cudaEventDestroy(stopcublas));
