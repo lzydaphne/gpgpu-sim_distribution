@@ -850,18 +850,58 @@ void gpgpu_sim::decrement_kernel_latency() {
       m_running_kernels[n]->m_kernel_TB_latency--;
   }
 }
+
+//! kernel counter: hardcoded for kernel size: 4 kernel and init as 0
+std::vector<unsigned> m_kernel_selection_count{4, 0};
+
 //! find kernel scheduler
 kernel_info_t *gpgpu_sim::select_kernel() {
-  /*Check the last issued kernel: 
-  Initially, the function checks if the last issued kernel (m_running_kernels[m_last_issued_kernel]) is still valid (i.e., not null), 
-  hasn't completed its execution (!m_running_kernels[m_last_issued_kernel]->no_more_ctas_to_run()), 
-  and doesn't have any thread block (TB) latencies (!m_running_kernels[m_last_issued_kernel]->m_kernel_TB_latency). 
-  If all these conditions are met, the function attempts to continue executing the same kernel, considering it as efficient to maintain locality and cache warmth.*/
-  if (m_running_kernels[m_last_issued_kernel] &&
-      !m_running_kernels[m_last_issued_kernel]->no_more_ctas_to_run() &&
+  /*Check the last issued kernel:
+  Initially, the function checks if the last issued kernel
+  (m_running_kernels[m_last_issued_kernel]) is still valid (i.e., not null),
+  hasn't completed its execution
+  (!m_running_kernels[m_last_issued_kernel]->no_more_ctas_to_run()), and doesn't
+  have any thread block (TB) latencies
+  (!m_running_kernels[m_last_issued_kernel]->m_kernel_TB_latency). If all these
+  conditions are met, the function attempts to continue executing the same
+  kernel, considering it as efficient to maintain locality and cache warmth.*/
+  // if (m_running_kernels[m_last_issued_kernel] &&
+  //     !m_running_kernels[m_last_issued_kernel]->no_more_ctas_to_run() &&
+  //     !m_running_kernels[m_last_issued_kernel]->m_kernel_TB_latency) {
+
+  //   // USE last one
+  //   unsigned launch_uid = m_running_kernels[m_last_issued_kernel]->get_uid();
+  //   if (std::find(m_executed_kernel_uids.begin(),
+  //   m_executed_kernel_uids.end(),
+  //                 launch_uid) == m_executed_kernel_uids.end()) {
+  //     m_running_kernels[m_last_issued_kernel]->start_cycle =
+  //         gpu_sim_cycle + gpu_tot_sim_cycle;
+  //     m_executed_kernel_uids.push_back(launch_uid);
+  //     m_executed_kernel_names.push_back(
+  //         m_running_kernels[m_last_issued_kernel]->name());
+  //   }
+  //   return m_running_kernels[m_last_issued_kernel];
+  // }
+  //! modify here
+  unsigned int num_kernels = m_running_kernels.size();
+  // unsigned int selections = 0;
+  /*Round-robin scheduling:
+  If the last issued kernel does not meet the criteria for continued execution,
+  the function iterates through all running kernels in a round-robin fashion.
+  This is achieved by starting from the kernel immediately after the last issued
+  kernel and wrapping around the list of running kernels. For each kernel, it
+  checks if there are more Compute Thread Arrays (CTAs) left to execute and if
+  there is no TB latency, similar to the initial check.*/
+  // while(selections < num_kernels * 4) {
+  // Reset the counter if it has reached 4, allowing for the next kernel
+  // selection
+  if (m_kernel_selection_count[m_last_issued_kernel] < 3 &&
+      m_running_kernels[m_last_issued_kernel] &&
+      kernel_more_cta_left(m_running_kernels[m_last_issued_kernel]) &&
       !m_running_kernels[m_last_issued_kernel]->m_kernel_TB_latency) {
-    
-    // USE last one
+    m_kernel_selection_count[m_last_issued_kernel]++;
+    // m_last_issued_kernel = idx;
+
     unsigned launch_uid = m_running_kernels[m_last_issued_kernel]->get_uid();
     if (std::find(m_executed_kernel_uids.begin(), m_executed_kernel_uids.end(),
                   launch_uid) == m_executed_kernel_uids.end()) {
@@ -871,39 +911,40 @@ kernel_info_t *gpgpu_sim::select_kernel() {
       m_executed_kernel_names.push_back(
           m_running_kernels[m_last_issued_kernel]->name());
     }
+
     return m_running_kernels[m_last_issued_kernel];
   }
 
-  /*Round-robin scheduling: 
-  If the last issued kernel does not meet the criteria for continued execution, 
-  the function iterates through all running kernels in a round-robin fashion. 
-  This is achieved by starting from the kernel immediately after the last issued kernel and wrapping around the list of running kernels. 
-  For each kernel, it checks if there are more Compute Thread Arrays (CTAs) left to execute and if there is no TB latency, similar to the initial check.*/
-  for (unsigned n = 0; n < m_running_kernels.size(); n++) {
+  m_kernel_selection_count[m_last_issued_kernel] = 0;
+
+  for (unsigned n = 0; n < num_kernels; n++) {
     unsigned idx =
         (n + m_last_issued_kernel + 1) % m_config.max_concurrent_kernel;
-    if (kernel_more_cta_left(m_running_kernels[idx]) &&
-        !m_running_kernels[idx]->m_kernel_TB_latency) { 
+    // if (m_kernel_selection_count[m_last_issued_kernel] >= 4) {
+    // m_kernel_selection_count[idx] = 0;
 
-      /*Selecting a new kernel to execute: 
-      Upon finding a suitable kernel, the function updates m_last_issued_kernel to the index of this newly selected kernel, 
-      sets its start cycle, and records its execution as done by pushing its UID and name to the respective lists. 
-      This kernel is then returned for execution.*/
-      m_last_issued_kernel = idx;
+    if (m_running_kernels[idx] &&
+        kernel_more_cta_left(m_running_kernels[idx]) &&
+        !m_running_kernels[idx]->m_kernel_TB_latency) {
+      m_kernel_selection_count[idx]++;
+      // m_last_issued_kernel = idx;
       m_running_kernels[idx]->start_cycle = gpu_sim_cycle + gpu_tot_sim_cycle;
-      // record this kernel for stat print if it is the first time this kernel
-      // is selected for execution
-      unsigned launch_uid = m_running_kernels[idx]->get_uid();
-      assert(std::find(m_executed_kernel_uids.begin(),
-                       m_executed_kernel_uids.end(),
-                       launch_uid) == m_executed_kernel_uids.end());
-      m_executed_kernel_uids.push_back(launch_uid);
-      m_executed_kernel_names.push_back(m_running_kernels[idx]->name());
 
+      unsigned launch_uid = m_running_kernels[idx]->get_uid();
+      if (std::find(m_executed_kernel_uids.begin(),
+                    m_executed_kernel_uids.end(),
+                    launch_uid) == m_executed_kernel_uids.end()) {
+        m_executed_kernel_uids.push_back(launch_uid);
+        m_executed_kernel_names.push_back(m_running_kernels[idx]->name());
+      }
       return m_running_kernels[idx];
     }
+    // }
   }
-  return NULL;
+  // Increment total selections counter
+  // selections++;
+  // }
+  return NULL;  // No suitable kernel found or all have been selected 4 times
 }
 
 unsigned gpgpu_sim::finished_kernel() {
@@ -1889,7 +1930,7 @@ int gpgpu_sim::next_clock_domain(void) {
   }
   return mask;
 }
-
+//! Issue CTA
 void gpgpu_sim::issue_block2core() {
   unsigned last_issued = m_last_cluster_issue;
   for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++) {

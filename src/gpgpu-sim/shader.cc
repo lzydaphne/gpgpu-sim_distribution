@@ -4624,6 +4624,7 @@ unsigned simt_core_cluster::get_n_active_sms() const {
 
 //! Issue a warp-level CUDA thread to the core on cluster
 //! find kernel scheduler
+//* cluster ---select SM---> SM
 unsigned simt_core_cluster::issue_block2core() {
   unsigned num_blocks_issued = 0;
   for (unsigned i = 0; i < m_config->n_simt_cores_per_cluster; i++) {
@@ -4649,7 +4650,7 @@ unsigned simt_core_cluster::issue_block2core() {
         }
       }
     }
-
+    //! issue block to core
     if (m_gpu->kernel_more_cta_left(kernel) &&
         //            (m_core[core]->get_n_active_cta() <
         //            m_config->max_cta(*kernel)) ) {

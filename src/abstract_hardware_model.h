@@ -358,6 +358,7 @@ class kernel_info_t {
   kernel_info_t *get_parent() { return m_parent_kernel; }
 
  private:
+  
   kernel_info_t *m_parent_kernel;
   dim3 m_parent_ctaid;
   dim3 m_parent_tid;
@@ -367,6 +368,7 @@ class kernel_info_t {
 
   // Jin: kernel timing
  public:
+ 
   unsigned long long launch_cycle;
   unsigned long long start_cycle;
   unsigned long long end_cycle;

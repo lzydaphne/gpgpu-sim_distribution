@@ -759,6 +759,7 @@ void warp_inst_t::completed(unsigned long long cycle) const {
       pc, latency * active_count());
 }
 
+//! kernel info constructor
 kernel_info_t::kernel_info_t(dim3 gridDim, dim3 blockDim,
                              class function_info *entry) {
   m_kernel_entry = entry;
@@ -783,6 +784,7 @@ kernel_info_t::kernel_info_t(dim3 gridDim, dim3 blockDim,
       num_blocks() * entry->gpgpu_ctx->device_runtime->g_TB_launch_latency;
 
   cache_config_set = false;
+
 }
 
 /*A snapshot of the texture mappings needs to be stored in the kernel's info as
