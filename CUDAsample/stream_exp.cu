@@ -66,9 +66,15 @@ void cudaErrCheck_(cudaError_t stat, const char *file, int line)
 using namespace nvcuda;
 
 // Must be multiples of 16 for wmma code to work
-#define MATRIX_M 32
-#define MATRIX_N 32
-#define MATRIX_K 32
+// #define MATRIX_M 32
+// #define MATRIX_N 32
+// #define MATRIX_K 32
+#define MATRIX_M 64
+#define MATRIX_N 64
+#define MATRIX_K 64
+// #define MATRIX_M 128
+// #define MATRIX_N 128
+// #define MATRIX_K 128
 
 // The only dimensions currently supported by WMMA
 const int WMMA_M = 16;
@@ -285,8 +291,8 @@ int main(int argc, char *argv[])
    cudaEvent_t stopWMMA, stopMatrix;
 
 
-   // cudaErrCheck(cudaEventCreate(&startWMMA));
-   // cudaErrCheck(cudaEventCreate(&stopWMMA));
+   cudaErrCheck(cudaEventCreate(&startWMMA));
+   cudaErrCheck(cudaEventCreate(&stopWMMA));
    // cudaErrCheck(cudaEventCreate(&startMatrix));
    // cudaErrCheck(cudaEventCreate(&stopMatrix));
 
@@ -314,22 +320,24 @@ int main(int argc, char *argv[])
    
    printf("Converting to fp16...a_fp16\n");
    printf("Current cycle time:");
-   convertFp32ToFp16<<<(MATRIX_M * MATRIX_K + 31) / 32, 32, 0, streams[0]>>>(a_fp16, h_A, MATRIX_M * MATRIX_K);
-//    convertFp32ToFp16<<<(MATRIX_M * MATRIX_K + 127) / 128, 128, 0, streams[0]>>>(a_fp16, h_A, MATRIX_M * MATRIX_K);
+   // convertFp32ToFp16<<<(MATRIX_M * MATRIX_K + 31) / 32, 32, 0, streams[0]>>>(a_fp16, h_A, MATRIX_M * MATRIX_K);
+   convertFp32ToFp16<<<(MATRIX_M * MATRIX_K + 63) / 64, 64, 0, streams[0]>>>(a_fp16, h_A, MATRIX_M * MATRIX_K);
+   // convertFp32ToFp16<<<(MATRIX_M * MATRIX_K + 127) / 128, 128, 0, streams[0]>>>(a_fp16, h_A, MATRIX_M * MATRIX_K);
    //* sequential
 //    convertFp32ToFp16<<<(MATRIX_M * MATRIX_K + 127) / 128, 128, 0, 0>>>(a_fp16, h_A, MATRIX_M * MATRIX_K);
 
-//    convertFp32ToFp16<<<(MATRIX_M * MATRIX_K + 255) / 256, 256>>>(a_fp16, a_fp32, MATRIX_M * MATRIX_K);
+   // convertFp32ToFp16<<<(MATRIX_M * MATRIX_K + 255) / 256, 256>>>(a_fp16, a_fp32, MATRIX_M * MATRIX_K);
    //printf("Current cycle time done:");
    // //printf("Current cycle time: %f\n", getCycleTime());
    //! concurrent
    printf("Converting to fp16...b_fp16\n");
    printf("Current cycle time:");
-   convertFp32ToFp16<<<(MATRIX_K * MATRIX_N + 31) / 32, 32, 0, streams[1]>>>(b_fp16, h_B, MATRIX_K * MATRIX_N);
-//    convertFp32ToFp16<<<(MATRIX_K * MATRIX_N + 127) / 128, 128, 0, streams[1]>>>(b_fp16, h_B, MATRIX_K * MATRIX_N);
+   // convertFp32ToFp16<<<(MATRIX_K * MATRIX_N + 31) / 32, 32, 0, streams[1]>>>(b_fp16, h_B, MATRIX_K * MATRIX_N);
+   convertFp32ToFp16<<<(MATRIX_K * MATRIX_N + 63) / 64, 64, 0, streams[1]>>>(b_fp16, h_B, MATRIX_K * MATRIX_N);
+   // convertFp32ToFp16<<<(MATRIX_K * MATRIX_N + 127) / 128, 128, 0, streams[1]>>>(b_fp16, h_B, MATRIX_K * MATRIX_N);
    //* sequential
 //    convertFp32ToFp16<<<(MATRIX_K * MATRIX_N + 127) / 128, 128, 0, 0>>>(b_fp16, h_B, MATRIX_K * MATRIX_N);
-//    convertFp32ToFp16<<<(MATRIX_K * MATRIX_N + 255) / 256, 256>>>(b_fp16, b_fp32, MATRIX_K * MATRIX_N);
+   // convertFp32ToFp16<<<(MATRIX_K * MATRIX_N + 255) / 256, 256>>>(b_fp16, b_fp32, MATRIX_K * MATRIX_N);
    //printf("Converting to fp16... DONE\n");
 
    //    curandErrCheck(curandGenerateUniform(gen, c, MATRIX_M * MATRIX_N));
@@ -351,8 +359,12 @@ int main(int argc, char *argv[])
 
    // blockDim.x must be a multple of warpSize
    // 128x4 means we have 16 warps and a block computes a 64x64 output tile
+   // blockDim.x = 32;
+   // blockDim.y = 1;
+   // blockDim.x = 32;
+   // blockDim.y = 4;
    blockDim.x = 32;
-   blockDim.y = 1;
+   blockDim.y = 8;
 //    blockDim.x = 128;
 //    blockDim.y = 1;
    // blockDim.x = 64;
@@ -360,12 +372,16 @@ int main(int argc, char *argv[])
    // blockDim.x = 128;
    // blockDim.y = 4;
 
+   // gridDim.x = (MATRIX_M + (WMMA_M * blockDim.x / 256 - 1)) / (WMMA_M * blockDim.x / 256);
+   // gridDim.y = (MATRIX_N + WMMA_N * blockDim.y - 1) / (WMMA_N * blockDim.y);
+   // gridDim.x = (MATRIX_M + (WMMA_M * blockDim.x / 128 - 1)) / (WMMA_M * blockDim.x / 128);
+   // gridDim.y = (MATRIX_N + WMMA_N * blockDim.y - 1) / (WMMA_N * blockDim.y);
    gridDim.x = (MATRIX_M + (WMMA_M * blockDim.x / 32 - 1)) / (WMMA_M * blockDim.x / 32);
    gridDim.y = (MATRIX_N + WMMA_N * blockDim.y - 1) / (WMMA_N * blockDim.y);
    printf("gridDim.x = %d, gridDim.y = %d\n", gridDim.x, gridDim.y);
 
-   // cudaErrCheck(cudaEventRecord(startWMMA));
-   // cudaErrCheck(cudaEventRecord(startWMMA,streams[2]));
+   cudaErrCheck(cudaEventRecord(startWMMA));
+   cudaErrCheck(cudaEventRecord(startWMMA));
    // wmma_example<<<gridDim, blockDim>>>(a_fp16, b_fp16, c_wmma, MATRIX_M, MATRIX_N, MATRIX_K, alpha, beta);
    // matrixMulKernel<<<gridDim, blockDim>>>(d_A, d_B, d_C, N);
    
@@ -376,14 +392,14 @@ int main(int argc, char *argv[])
    // cudaDeviceSynchronize();
 
    wmma_example<<<gridDim, blockDim, 0, streams[2]>>>(a_fp16, b_fp16, d_C, MATRIX_M, MATRIX_N, MATRIX_K, alpha, beta);
-   // cudaErrCheck(cudaEventRecord(stopWMMA));
-   // cudaErrCheck(cudaEventRecord(stopWMMA,streams[2]));
+   cudaErrCheck(cudaEventRecord(stopWMMA));
+   cudaErrCheck(cudaEventRecord(stopWMMA));
    printf("Running with cudaEventSynchronize...\n");
    
-   // cudaErrCheck(cudaEventSynchronize(stopWMMA));
+   cudaErrCheck(cudaEventSynchronize(stopWMMA));
 
    printf("Running with cudaEventSynchronize-end...\n");
-   // cudaErrCheck(cudaEventElapsedTime(&elapsed_time, startWMMA, stopWMMA));
+   cudaErrCheck(cudaEventElapsedTime(&elapsed_time, startWMMA, stopWMMA));
    printf("Measured time for sample = %.3f ms\n", elapsed_time);
 //    printf("Running with wmma...done\n");
 
@@ -421,8 +437,8 @@ int main(int argc, char *argv[])
    cudaStreamDestroy(streams[2]);
    free(streams);
 
-   // cudaErrCheck(cudaEventDestroy(startWMMA));
-   // cudaErrCheck(cudaEventDestroy(stopWMMA));
+   cudaErrCheck(cudaEventDestroy(startWMMA));
+   cudaErrCheck(cudaEventDestroy(stopWMMA));
    // cudaErrCheck(cudaEventDestroy(startMatrix));
    // cudaErrCheck(cudaEventDestroy(stopMatrix));
 

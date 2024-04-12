@@ -919,7 +919,7 @@ void kernel_info_t::print_parent_info() {
 }
 
 void kernel_info_t::destroy_cta_streams() {
-  printf("Destroy streams for kernel %d: ", get_uid());
+  printf("Destroy streams for kernel in destroy_cta_streams %d: ", get_uid());
   size_t stream_size = 0;
   for (auto s = m_cta_streams.begin(); s != m_cta_streams.end(); s++) {
     stream_size += s->second.size();

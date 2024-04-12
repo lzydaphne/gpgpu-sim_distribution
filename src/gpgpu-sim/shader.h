@@ -2530,6 +2530,9 @@ class shader_core_ctx : public core_t {
   // run on this shader, where the warp_id is the static warp slot.
   unsigned m_dynamic_warp_id;
 
+  //! 240409
+  unsigned m_tensor_op_cnt;
+
   // Jin: concurrent kernels on a sm
  public:
   bool can_issue_1block(kernel_info_t &kernel);
