@@ -63,7 +63,9 @@ void cudaErrCheck_(cudaError_t stat, const char *file, int line)
 // }
 
 #include <mma.h>
+#include <cuda_fp16.h>
 using namespace nvcuda;
+
 
 // Must be multiples of 16 for wmma code to work
 #define MATRIX_M 32
@@ -75,6 +77,9 @@ using namespace nvcuda;
 // #define MATRIX_M 128
 // #define MATRIX_N 128
 // #define MATRIX_K 128
+// Defines to control which parts of the matrix are handled by WMMA or SP
+#define THRESHOLD_ROW (MATRIX_M / 2)
+#define THRESHOLD_COL (MATRIX_M / 2)
 
 // The only dimensions currently supported by WMMA
 const int WMMA_M = 16;
@@ -99,8 +104,58 @@ __global__ void matrixMulKernel(float *A, float *B, float *C, int N)
    }
    //printf("---end---kernel---sp--\n");
 }
-// CD kernel
 
+
+// Example of how to launch the kernels
+// void run_kernels(half *a, half *b, float *c, int M, int N, int K, float alpha, float beta) {
+//    dim3 wmma_gridDim;
+//    dim3 blockDim(32, 8);
+//    wmma_gridDim.x = (MATRIX_M + (WMMA_M * blockDim.x / 64 - 1)) / (WMMA_M * blockDim.x / 64);
+//    wmma_gridDim.y = (MATRIX_N + WMMA_N * blockDim.y - 1) / (WMMA_N * blockDim.y);
+
+//    dim3 sp_blockDim (16, 16);  // Commonly used block size for matrix multiplication
+//    dim3 sp_gridDim; 
+//    sp_gridDim.x = (N + sp_blockDim.x - 1) / sp_blockDim.x;
+//    sp_gridDim.y = (N + sp_blockDim.y - 1) / sp_blockDim.y;
+
+//     wmma_example<<<wmma_gridDim, blockDim, 0, streams[2]>>>(a, b, c, M, N, K, alpha, beta);
+//     sp_example<<<sp_gridDim, sp_blockDim, 0, streams[1]>>>(a, b, c, M, N, K, alpha, beta);
+// }
+
+// Kernel to calculate the lower right part of the GEMM using SP operations on FP16 data
+__global__ void sp_example(float *a, float *b, float *c, int M, int N, int K, float alpha, float beta) {
+    
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+   //  int col = blockIdx.y * blockDim.y + threadIdx.y;
+   //  int row = blockIdx.x * blockDim.x + threadIdx.x;
+   //  printf("row = %d, col = %d\n", row, col);
+
+
+    if(row >= M || col >= N) return;
+    // Ensure we're within the matrix dimensions
+    if(row<THRESHOLD_ROW || col<THRESHOLD_COL) return;
+
+    // Adjusted bounds check: only compute certain regions if required
+   //  if (row >= THRESHOLD_ROW && col >= THRESHOLD_COL ) {
+   float sum = 0.0f;
+//   int range = K / 2  ;
+// printf("row * K + k = %d\n", row * K + k);
+// printf("k * N + col = %d\n", k * N + col);
+   for (int k = 0; k < K ; ++k) {
+      float a_val = a[row * K + k];  // a is MxK
+      float b_val = b[k * N + col];  // b is KxN
+      sum += a_val * b_val;
+      // printf("a_val = %f, b_val = %f, sum = %f\n", a_val, b_val, sum);
+   }
+   if (row * N + col < M * N) {  // Check to prevent out-of-bounds access
+      // c[row * N + col] = alpha * sum + beta * c[row * N + col];
+      c[row * N + col] += sum ;
+   }
+    
+}
+
+// CD kernel
 // Performs an MxNxK GEMM (C=alpha*A*B + beta*C) assuming:
 //  1) Matrices are packed in memory.
 //  2) M, N and K are multiples of 16.
@@ -117,6 +172,10 @@ __global__ void wmma_example(half *a, half *b, float *c, int M, int N, int K, fl
    // Tile using a 2D grid
    int warpM = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
    int warpN = (blockIdx.y * blockDim.y + threadIdx.y);
+
+   // Only skip processing if both row and column indices exceed their thresholds
+   if (warpM * WMMA_M >= THRESHOLD_ROW && warpN * WMMA_N >= THRESHOLD_COL) return;
+
 
    // Declare the fragments
    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> a_frag;
@@ -217,10 +276,10 @@ int main(int argc, char *argv[])
    int N = MATRIX_N; // Define the size of the matrix
    size_t size = N * N * sizeof(float_t);
    float *h_A, *h_B, *h_C; // host copies of A, B, C
-   float *d_A, *d_B, *d_C; // device copies of A, B, C
+   float *d_A, *d_B, *d_C, *d_tmpC; // device copies of A, B, C
 
-   float *a_fp32;
-   float *b_fp32;
+   // float *a_fp32;
+   // float *b_fp32;
    half *a_fp16;
    half *b_fp16;
    // //printf("WMMA Example2\n");
@@ -245,6 +304,7 @@ int main(int argc, char *argv[])
    cudaErrCheck(cudaMalloc((void **)&d_A, size));
    cudaErrCheck(cudaMalloc((void **)&d_B, size));
    cudaErrCheck(cudaMalloc((void **)&d_C, size));
+   cudaErrCheck(cudaMalloc((void **)&d_tmpC, size));
 //    cudaMalloc((void **)&d_A, size);
 //    cudaMalloc((void **)&d_B, size);
 //    cudaMalloc((void **)&d_C, size);
@@ -255,6 +315,7 @@ int main(int argc, char *argv[])
       h_A[i] = (float)rand() / (float)RAND_MAX * 100.0; // Assign a random float value between 0 and 100
       h_B[i] = (float)rand() / (float)RAND_MAX * 100.0; // Assign a random float value between 0 and 100
       h_C[i] = 1.5;
+      
    }
 //    initializeMatrix(h_A, N);
 //    initializeMatrix(h_B, N);
@@ -272,9 +333,11 @@ int main(int argc, char *argv[])
    cudaErrCheck(cudaMemcpyAsync(d_A, h_A, size, cudaMemcpyHostToDevice, streams[0]));
    cudaErrCheck(cudaMemcpyAsync(d_B, h_B, size, cudaMemcpyHostToDevice, streams[1]));
    cudaErrCheck(cudaMemcpyAsync(d_C, h_C, size, cudaMemcpyHostToDevice, streams[2]));
-//    cudaErrCheck(cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice));
-//    cudaErrCheck(cudaMemcpy(d_B, h_B, size, cudaMemcpyHostToDevice));
-//    cudaErrCheck(cudaMemcpy(d_C, h_C, size, cudaMemcpyHostToDevice));
+   cudaErrCheck(cudaMemcpyAsync(d_tmpC, h_C, size, cudaMemcpyHostToDevice, streams[2]));
+   // cudaErrCheck(cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice));
+   // cudaErrCheck(cudaMemcpy(d_B, h_B, size, cudaMemcpyHostToDevice));
+   // cudaErrCheck(cudaMemcpy(d_C, h_C, size, cudaMemcpyHostToDevice));
+   // cudaErrCheck(cudaMemcpy(d_tmpC, h_C, size, cudaMemcpyHostToDevice));
 
 
 
@@ -312,7 +375,8 @@ int main(int argc, char *argv[])
    
    printf("Converting to fp16...a_fp16\n");
    printf("Current cycle time:");
-   convertFp32ToFp16<<<(MATRIX_M * MATRIX_K + 31) / 32, 32, 0, streams[0]>>>(a_fp16, h_A, MATRIX_M * MATRIX_K);
+   // convertFp32ToFp16<<<(MATRIX_M * MATRIX_K + 31) / 32, 32>>>(a_fp16, d_A, MATRIX_M * MATRIX_K);
+   convertFp32ToFp16<<<(MATRIX_M * MATRIX_K + 31) / 32, 32, 0, streams[0]>>>(a_fp16, d_A, MATRIX_M * MATRIX_K);
    // convertFp32ToFp16<<<(MATRIX_M * MATRIX_K + 63) / 64, 64, 0, streams[0]>>>(a_fp16, h_A, MATRIX_M * MATRIX_K);
    // convertFp32ToFp16<<<(MATRIX_M * MATRIX_K + 127) / 128, 128, 0, streams[0]>>>(a_fp16, h_A, MATRIX_M * MATRIX_K);
    // convertFp32ToFp16<<<(MATRIX_M * MATRIX_K + 255) / 256, 256,0, streams[0]>>>(a_fp16, a_fp32, MATRIX_M * MATRIX_K);
@@ -325,7 +389,8 @@ int main(int argc, char *argv[])
    //! concurrent
    printf("Converting to fp16...b_fp16\n");
    printf("Current cycle time:");
-   convertFp32ToFp16<<<(MATRIX_K * MATRIX_N + 31) / 32, 32, 0, streams[1]>>>(b_fp16, h_B, MATRIX_K * MATRIX_N);
+   // convertFp32ToFp16<<<(MATRIX_K * MATRIX_N + 31) / 32, 32>>>(b_fp16, d_B, MATRIX_K * MATRIX_N);
+   convertFp32ToFp16<<<(MATRIX_K * MATRIX_N + 31) / 32, 32, 0, streams[1]>>>(b_fp16, d_B, MATRIX_K * MATRIX_N);
    // convertFp32ToFp16<<<(MATRIX_K * MATRIX_N + 63) / 64, 64, 0, streams[1]>>>(b_fp16, h_B, MATRIX_K * MATRIX_N);
    // convertFp32ToFp16<<<(MATRIX_K * MATRIX_N + 127) / 128, 128, 0, streams[1]>>>(b_fp16, h_B, MATRIX_K * MATRIX_N);
    // convertFp32ToFp16<<<(MATRIX_K * MATRIX_N + 255) / 256, 256,0, streams[1]>>>(b_fp16, h_B, MATRIX_K * MATRIX_N);
@@ -386,8 +451,10 @@ int main(int argc, char *argv[])
 //    matrixMulKernel<<<gridDim, blockDim, 0, 0>>>(d_A, d_B, d_C, N);
    //! concurrent
    // cudaDeviceSynchronize();
+   // cudaStreamSynchronize(streams[0]);
 
    wmma_example<<<gridDim, blockDim, 0, streams[2]>>>(a_fp16, b_fp16, d_C, MATRIX_M, MATRIX_N, MATRIX_K, alpha, beta);
+   // cudaDeviceSynchronize();
    cudaErrCheck(cudaEventRecord(stopWMMA));
    cudaErrCheck(cudaEventRecord(stopWMMA));
    printf("Running with cudaEventSynchronize...\n");
@@ -399,17 +466,26 @@ int main(int argc, char *argv[])
    printf("Measured time for sample = %.3f ms\n", elapsed_time);
 //    printf("Running with wmma...done\n");
 
+   dim3 sp_blockDim (16,16);  // Commonly used block size for matrix multiplication
+   dim3 sp_gridDim; 
+   sp_gridDim.x = (N + sp_blockDim.x - 1) / sp_blockDim.x;
+   sp_gridDim.y = (N + sp_blockDim.y - 1) / sp_blockDim.y;
+   printf("sp_example's : gridDim.x = %d, gridDim.y = %d\n", sp_gridDim.x, sp_gridDim.y);
+   sp_example<<<sp_gridDim, sp_blockDim, 0, streams[0]>>>(d_A, d_B, d_tmpC, MATRIX_M, MATRIX_N, MATRIX_K, alpha, beta);
+   // sp_example<<<sp_gridDim, sp_blockDim>>>(d_A, d_B, d_tmpC, MATRIX_M, MATRIX_N, MATRIX_K, alpha, beta);
+   // cudaErrCheck(cudaDeviceSynchronize());
+
 
    // cudaErrCheck(cudaEventRecord(startMatrix,streams[1]));
-   printf("Running with matrixMulKernel\n");
+   // printf("Running with matrixMulKernel\n");
 
-   dim3 blockDim_matrix (16, 16);  // Commonly used block size for matrix multiplication
-   dim3 gridDim_matrix; 
-   gridDim_matrix.x = (N + blockDim_matrix.x - 1) / blockDim_matrix.x;
-   gridDim_matrix.y = (N + blockDim_matrix.y - 1) / blockDim_matrix.y;
+   // dim3 blockDim_matrix (16, 16);  // Commonly used block size for matrix multiplication
+   // dim3 gridDim_matrix; 
+   // gridDim_matrix.x = (N + blockDim_matrix.x - 1) / blockDim_matrix.x;
+   // gridDim_matrix.y = (N + blockDim_matrix.y - 1) / blockDim_matrix.y;
 
-   printf("matrixMulKernel's : gridDim.x = %d, gridDim.y = %d\n", gridDim_matrix.x, gridDim_matrix.y);
-   matrixMulKernel<<<gridDim_matrix, blockDim_matrix, 0, streams[1]>>>(d_A, d_B, d_C, N);
+   // printf("matrixMulKernel's : gridDim.x = %d, gridDim.y = %d\n", gridDim_matrix.x, gridDim_matrix.y);
+   // matrixMulKernel<<<gridDim_matrix, blockDim_matrix, 0, streams[1]>>>(d_A, d_B, d_C, N);
 
    // cudaErrCheck(cudaEventRecord(stopMatrix,streams[1]));
    // cudaErrCheck(cudaEventSynchronize(stopMatrix));
@@ -462,6 +538,7 @@ int main(int argc, char *argv[])
    cudaFree(d_A);
    cudaFree(d_B);
    cudaFree(d_C);
+   cudaFree(d_tmpC);
    //* Pinned Memory
    cudaFreeHost(h_A);
    cudaFreeHost(h_B);
