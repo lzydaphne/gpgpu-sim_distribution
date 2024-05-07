@@ -1294,7 +1294,7 @@ class sp_unit : public pipelined_simd_unit {
       case DP_OP:
         return false;
       default:
-        printf("inst.op = SP_OP\n");
+        // printf("inst.op = SP_OP\n");
         break;
     }
     return pipelined_simd_unit::can_issue(inst);

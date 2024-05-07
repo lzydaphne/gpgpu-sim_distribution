@@ -1307,11 +1307,13 @@ void scheduler_unit::cycle() {
       //        m_shader->m_config->gpgpu_ctx->func_sim->ptx_get_insn_str(pc)
       //            .c_str());
       //! printf as below
-      printf(
-          "Warp (warp_id %u, dynamic_warp_id %u) has valid instruction (%s)\n",
-          (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(),
-          m_shader->m_config->gpgpu_ctx->func_sim->ptx_get_insn_str(pc)
-              .c_str());
+      // printf(
+      //     "Warp (warp_id %u, dynamic_warp_id %u) has valid instruction
+      //     (%s)\n",
+      //     (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(),
+      //     m_shader->m_config->gpgpu_ctx->func_sim->ptx_get_insn_str(pc)
+      //         .c_str());
+      
       SCHED_DPRINTF(
           "Warp (warp_id %u, dynamic_warp_id %u) has valid instruction (%s)\n",
           (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(),
@@ -1480,9 +1482,9 @@ void scheduler_unit::cycle() {
 
                 if (tensor_core_pipe_avail) {
                   //! test
-                  printf(
-                      "scheduler_unit::cycle(): issue tensor core when "
-                      "tensor_core_pipe_avail\n");
+                  // printf(
+                  //     "scheduler_unit::cycle(): issue tensor core when "
+                  //     "tensor_core_pipe_avail\n");
                   m_shader->issue_warp(*m_tensor_core_out, pI, active_mask,
                                        warp_id, m_id);
                   issued++;
@@ -1536,10 +1538,10 @@ void scheduler_unit::cycle() {
         SCHED_DPRINTF(
             "Warp (warp_id %u, dynamic_warp_id %u) issued %u instructions\n",
             (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(), issued);
-        printf(
-            "Warp (warp_id %u, dynamic_warp_id %u) issued %u instructions "
-            "--warp_inst_issued\n",
-            (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(), issued);
+        // printf(
+        //     "Warp (warp_id %u, dynamic_warp_id %u) issued %u instructions "
+        //     "--warp_inst_issued\n",
+        //     (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(), issued);
         do_on_warp_issued(warp_id, issued, iter);
       }
       checked++;
@@ -1898,9 +1900,10 @@ void shader_core_ctx::execute() {
       if ((*ready_reg)->op == TENSOR_CORE_OP) {
         //! test cycle
         tmp_tensor_gpu_sim_cycle[cur_warp_id] = exp_gpu_sim_cycle;
-        printf("shader_core_ctx::execute():---START--TENSOR----\n");
-        printf("cur_warp_id: %d , tmp_tensor_gpu_sim_cycle[cur_warp_id] %llu\n",
-               cur_warp_id, tmp_tensor_gpu_sim_cycle[cur_warp_id]);
+        // printf("shader_core_ctx::execute():---START--TENSOR----\n");
+        // printf("cur_warp_id: %d , tmp_tensor_gpu_sim_cycle[cur_warp_id]
+        // %llu\n",
+        //        cur_warp_id, tmp_tensor_gpu_sim_cycle[cur_warp_id]);
 
         // printf("START: tmp_tensor_gpu_sim_cycle: %d\n",
         //  m_pipeline_reg[start_stage]->op);  // out
@@ -1908,9 +1911,9 @@ void shader_core_ctx::execute() {
       } else if ((*ready_reg)->op == SP_OP || (*ready_reg)->op == ALU_OP ||
                  (*ready_reg)->op == INT_OP) {
         tmp_sp_gpu_sim_cycle[cur_warp_id] = exp_gpu_sim_cycle;
-        printf("shader_core_ctx::execute():---START--SP----\n");
-        printf("cur_warp_id: %d , tmp_sp_gpu_sim_cycle[cur_warp_id]: %llu\n",
-               cur_warp_id, tmp_sp_gpu_sim_cycle[cur_warp_id]);
+        // printf("shader_core_ctx::execute():---START--SP----\n");
+        // printf("cur_warp_id: %d , tmp_sp_gpu_sim_cycle[cur_warp_id]: %llu\n",
+        //        cur_warp_id, tmp_sp_gpu_sim_cycle[cur_warp_id]);
         // printf("START: tmp_SP_gpu_sim_cycle: %d\n",
         //  m_pipeline_reg[start_stage]->op);  // out
       }
@@ -2036,42 +2039,43 @@ void shader_core_ctx::writeback() {
     //! added @lzydaphne
     if (pipe_reg->op == TENSOR_CORE_OP) {
       m_num_of_tensor_core_op++;
-      printf("-----END---TENSOR-----\n");
+      // printf("-----END---TENSOR-----\n");
       tensor_gpu_sim_cycle +=
           exp_gpu_sim_cycle - tmp_tensor_gpu_sim_cycle[cur_warp_id];
-      printf(
-          "cur_warp_id: %d, exp_gpu_sim_cycle: %llu, "
-          "tmp_tensor_gpu_sim_cycle[cur_warp_id]: %llu, tensor_gpu_sim_cycle: "
-          "%llu\n",
-          cur_warp_id, exp_gpu_sim_cycle, tmp_tensor_gpu_sim_cycle[cur_warp_id],
-          tensor_gpu_sim_cycle);
+      // printf(
+      //     "cur_warp_id: %d, exp_gpu_sim_cycle: %llu, "
+      //     "tmp_tensor_gpu_sim_cycle[cur_warp_id]: %llu, tensor_gpu_sim_cycle:
+      //     "
+      //     "%llu\n",
+      //     cur_warp_id, exp_gpu_sim_cycle,
+      //     tmp_tensor_gpu_sim_cycle[cur_warp_id], tensor_gpu_sim_cycle);
 
       // printf("tensor_gpu_sim_cycle %llu\n", tensor_gpu_sim_cycle);
-      printf("Instruction: %d\n", pipe_reg->op);
-      printf("Num of Tensor Core Op: %llu\n", m_num_of_tensor_core_op);
+      // printf("Instruction: %d\n", pipe_reg->op);
+      // printf("Num of Tensor Core Op: %llu\n", m_num_of_tensor_core_op);
 
     } else if (pipe_reg->op == SP_OP) {
       m_num_of_SP_op++;
-      printf("-----END---SP-----\n");
+      // printf("-----END---SP-----\n");
       sp_gpu_sim_cycle += exp_gpu_sim_cycle - tmp_sp_gpu_sim_cycle[cur_warp_id];
-      printf(
-          "cur_warp_id: %d, "
-          "exp_gpu_sim_cycle: %llu, "
-          "tmp_sp_gpu_sim_cycle[cur_warp_id]: %llu, "
-          "sp_gpu_sim_cycle: %llu\n",
-          cur_warp_id, exp_gpu_sim_cycle, tmp_sp_gpu_sim_cycle[cur_warp_id],
-          sp_gpu_sim_cycle);
+      // printf(
+      //     "cur_warp_id: %d, "
+      //     "exp_gpu_sim_cycle: %llu, "
+      //     "tmp_sp_gpu_sim_cycle[cur_warp_id]: %llu, "
+      //     "sp_gpu_sim_cycle: %llu\n",
+      //     cur_warp_id, exp_gpu_sim_cycle, tmp_sp_gpu_sim_cycle[cur_warp_id],
+      //     sp_gpu_sim_cycle);
 
       // printf("warp_id: %d\n", cur_warp_id);
       // printf(" exp_gpu_sim_cycle %llu\n", exp_gpu_sim_cycle);
       // printf("sp_gpu_sim_cycle %llu\n", sp_gpu_sim_cycle);
-      printf("Instruction: %d\n", pipe_reg->op);
-      printf("Num of SP Op: %llu\n", m_num_of_SP_op);
+      // printf("Instruction: %d\n", pipe_reg->op);
+      // printf("Num of SP Op: %llu\n", m_num_of_SP_op);
 
     } else {
       m_num_of_non_tensor_core_non_SP_op++;
-      printf("Instruction: %d\n", pipe_reg->op);
-      printf(" Num of other Op: %llu\n", m_num_of_non_tensor_core_non_SP_op);
+      // printf("Instruction: %d\n", pipe_reg->op);
+      // printf(" Num of other Op: %llu\n", m_num_of_non_tensor_core_non_SP_op);
     }
     //! Updating Simulation Statistics
     m_gpu->gpu_sim_insn_last_update_sid = m_sid;

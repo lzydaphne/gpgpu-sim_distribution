@@ -1370,11 +1370,11 @@ void gpgpu_sim::clear_executed_kernel_info() {
 }
 void gpgpu_sim::gpu_print_stat() {
   //! add debug
-  printf("gpu_print_stat() not implemented yet\n");
+  printf("gpu_print_stat()\n");
   FILE *statfout = stdout;
 
   std::string kernel_info_str = executed_kernel_info_string();
-  printf("gpu_print_stat() not implemented yet-1\n");
+  // printf("gpu_print_stat() not implemented yet-1\n");
   fprintf(statfout, "%s", kernel_info_str.c_str());
 
   printf("gpu_sim_cycle = %lld\n", gpu_sim_cycle);
@@ -2022,7 +2022,7 @@ void gpgpu_sim::cycle() {
     //! check if is wmma instruction
     gpu_sim_cycle++;
     exp_gpu_sim_cycle = gpu_sim_cycle;
-    printf("gpu_sim_cycle: %llu\n", gpu_sim_cycle);
+    // printf("gpu_sim_cycle: %llu\n", gpu_sim_cycle);
 
     if (g_interactive_debugger_enabled) gpgpu_debug();
 

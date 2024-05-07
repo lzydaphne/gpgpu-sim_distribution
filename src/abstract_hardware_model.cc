@@ -784,7 +784,6 @@ kernel_info_t::kernel_info_t(dim3 gridDim, dim3 blockDim,
       num_blocks() * entry->gpgpu_ctx->device_runtime->g_TB_launch_latency;
 
   cache_config_set = false;
-
 }
 
 /*A snapshot of the texture mappings needs to be stored in the kernel's info as
@@ -823,7 +822,7 @@ kernel_info_t::kernel_info_t(
 kernel_info_t::~kernel_info_t() {
   assert(m_active_threads.empty());
   //! destroy the streams
-  printf("Destroy streams for kernel %d: ", get_uid());
+  printf("Destroy streams for kernel %d: \n", get_uid());
   destroy_cta_streams();
   delete m_param_mem;
 }
@@ -919,7 +918,7 @@ void kernel_info_t::print_parent_info() {
 }
 
 void kernel_info_t::destroy_cta_streams() {
-  printf("Destroy streams for kernel in destroy_cta_streams %d: ", get_uid());
+  printf("Destroy streams for kernel in destroy_cta_streams %d: \n", get_uid());
   size_t stream_size = 0;
   for (auto s = m_cta_streams.begin(); s != m_cta_streams.end(); s++) {
     stream_size += s->second.size();
