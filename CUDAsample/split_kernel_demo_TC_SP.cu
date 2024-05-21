@@ -49,11 +49,16 @@ void cudaErrCheck_(cudaError_t stat, const char *file, int line) {
 #include <mma.h>
 using namespace nvcuda;
 
-#define MATRIX_M 16384
-#define MATRIX_N 16384
-#define MATRIX_K 16384
-#define THRESHOLD_ROW 16368
-#define THRESHOLD_COL 16368
+#define MATRIX_M 20480
+#define MATRIX_N 20480
+#define MATRIX_K 20480
+#define THRESHOLD_ROW 20464
+#define THRESHOLD_COL 20464
+// #define MATRIX_M 10240
+// #define MATRIX_N 10240
+// #define MATRIX_K 10240
+// #define THRESHOLD_ROW 10224
+// #define THRESHOLD_COL 10224
 const int WMMA_M = 16;
 const int WMMA_N = 16;
 const int WMMA_K = 16;
@@ -75,9 +80,6 @@ __global__ void sp_example(half *a, half *b, float *c, int M, int N, int K,
 
   }
 c[row * N + col] += __half2float(sum);
-// if (threadIdx.x % warpSize == 0 ) {
-//   printf("row = %d, col = %d, sum = %f\n", row, col, c[row * N + col]);
-// }
 }
 
 // CD kernel
@@ -95,7 +97,7 @@ __global__ void wmma_example(half *a, half *b, float *c, int M, int N, int K,
   int warpM = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
   int warpN = (blockIdx.y * blockDim.y + threadIdx.y);
   //! Only skip processing if both row and column indices exceed their thresholds
-  // if(warpM * WMMA_M >= THRESHOLD_ROW && warpN * WMMA_N >= THRESHOLD_COL) return;
+  if(warpM * WMMA_M >= THRESHOLD_ROW && warpN * WMMA_N >= THRESHOLD_COL) return;
 
   // Leading dimensions. Packed with no transpositions.
   int lda = M;
@@ -139,9 +141,6 @@ __global__ void wmma_example(half *a, half *b, float *c, int M, int N, int K,
   // Ensure only the first thread in each warp prints
 
   if (cRow < M && cCol < N) {
-    // if (threadIdx.x % warpSize == 0 ) {
-    //     printf("cRow= %d, cCol = %d\n", cRow, cCol);
-    // }
    wmma::load_matrix_sync(c_frag, c + cRow + cCol * ldc, ldc, wmma::mem_col_major);
 
 #pragma unroll
@@ -152,10 +151,6 @@ __global__ void wmma_example(half *a, half *b, float *c, int M, int N, int K,
     /// Store the output
     wmma::store_matrix_sync(c + cRow + cCol * ldc, c_frag, ldc, wmma::mem_col_major);
 
-    // Ensure only the first thread in each warp prints
-    // if (threadIdx.x % warpSize == 0 ) {
-    //     printf("wmma_example: warpM = %d, warpN = %d\n", warpM, warpN);
-    //   }
     } 
   }
 }
@@ -287,11 +282,7 @@ int main(int argc, char *argv[]) {
   gridDim.x =
       (MATRIX_M + (WMMA_M * blockDim.x / 32 - 1)) / (WMMA_M * blockDim.x / 32);
   gridDim.y = (MATRIX_N + WMMA_N * blockDim.y - 1) / (WMMA_N * blockDim.y);
-  // gridDim.x = (MATRIX_M + (WMMA_M * blockDim.x / 32 - 1)) / (WMMA_M *
-  // blockDim.x / 32); gridDim.y = (MATRIX_N + WMMA_N * blockDim.y - 1) /
-  // (WMMA_N * blockDim.y);
-  // printf("wmma_example: gridDim.x = %d, gridDim.y = %d\n", gridDim.x,
-  //        gridDim.y);
+
 
 //* Create events for timing
 cudaEventCreate(&start);
@@ -300,10 +291,10 @@ cudaEventCreate(&stop);
 
 
 //! wmma kernel
-wmma_example<<<gridDim, blockDim, 0, 0>>>(
-      a_fp16, b_fp16, d_C, MATRIX_M, MATRIX_N, MATRIX_K, alpha, beta);
-// wmma_example<<<gridDim, blockDim, 0, streams[0]>>>(
+// wmma_example<<<gridDim, blockDim, 0, 0>>>(
 //       a_fp16, b_fp16, d_C, MATRIX_M, MATRIX_N, MATRIX_K, alpha, beta);
+wmma_example<<<gridDim, blockDim, 0, streams[0]>>>(
+      a_fp16, b_fp16, d_C, MATRIX_M, MATRIX_N, MATRIX_K, alpha, beta);
 
 
   dim3 sp_blockDim(16,16);  // Commonly used block size for matrix multiplication
@@ -314,8 +305,8 @@ wmma_example<<<gridDim, blockDim, 0, 0>>>(
          sp_gridDim.y);
 
 //! sp kernel
-// sp_example<<<sp_gridDim, sp_blockDim, 0, streams[1]>>>(
-//         a_fp16, b_fp16, d_C, MATRIX_M, MATRIX_N, MATRIX_K, alpha_fp16, beta_fp16);
+sp_example<<<sp_gridDim, sp_blockDim, 0, streams[1]>>>(
+        a_fp16, b_fp16, d_C, MATRIX_M, MATRIX_N, MATRIX_K, alpha_fp16, beta_fp16);
     
   
 
@@ -330,6 +321,7 @@ printf("Time for WMMA kernel: %f ms\n", elapsedTime);
 cudaEventDestroy(start);
 cudaEventDestroy(stop);
 
+ //* use to prevent segfault!!!
   cudaDeviceSynchronize();
 
   // Error checking

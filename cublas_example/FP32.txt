@@ -1,0 +1,113 @@
+shape: (128, 64) x (64, 256)
+>>>>>>>>>>>>>>>>> test fp32 >>>>>>>>>>>>>>>>>
+algo -1: 0.055 ms
+algo 2: 0.046 ms
+algo 3: 0.041 ms
+algo 4: 0.029 ms
+algo 5: 0.033 ms
+algo 6: 0.047 ms
+algo 7: 0.046 ms
+algo 8: 0.063 ms
+algo 9: 0.061 ms
+algo 10: 0.076 ms
+algo 11: 0.084 ms
+algo 18: 0.029 ms
+algo 19: 0.039 ms
+algo 20: 0.049 ms
+algo 21: 0.075 ms
+algo 22: 0.065 ms
+algo 23: 0.082 ms
+>>>>>>>>>>>>>>>>> compare result >>>>>>>>>>>>>>>>>
+fp32: 37.54331 37.16436 36.78542 36.40647 36.02753 35.64858 35.26964 34.89069 34.51175 34.13280
+Generating '/tmp/nsys-report-ba79.qdstrm'
+[1/8] [0%                          ] report25.nsys-rep[1/8] [0%                          ] report25.nsys-rep[1/8] [11%                         ] report25.nsys-rep[1/8] [===23%                      ] report25.nsys-rep[1/8] [==================75%       ] report25.nsys-rep[1/8] [=====================89%    ] report25.nsys-rep[1/8] [========================100%] report25.nsys-rep[1/8] [========================100%] report25.nsys-rep
+[2/8] [0%                          ] report24.sqlite[2/8] [1%                          ] report24.sqlite[2/8] [2%                          ] report24.sqlite[2/8] [3%                          ] report24.sqlite[2/8] [4%                          ] report24.sqlite[2/8] [5%                          ] report24.sqlite[2/8] [6%                          ] report24.sqlite[2/8] [7%                          ] report24.sqlite[2/8] [8%                          ] report24.sqlite[2/8] [9%                          ] report24.sqlite[2/8] [10%                         ] report24.sqlite[2/8] [11%                         ] report24.sqlite[2/8] [12%                         ] report24.sqlite[2/8] [13%                         ] report24.sqlite[2/8] [14%                         ] report24.sqlite[2/8] [=15%                        ] report24.sqlite[2/8] [=16%                        ] report24.sqlite[2/8] [=17%                        ] report24.sqlite[2/8] [==18%                       ] report24.sqlite[2/8] [==19%                       ] report24.sqlite[2/8] [==20%                       ] report24.sqlite[2/8] [==21%                       ] report24.sqlite[2/8] [===22%                      ] report24.sqlite[2/8] [===23%                      ] report24.sqlite[2/8] [===24%                      ] report24.sqlite[2/8] [====25%                     ] report24.sqlite[2/8] [====26%                     ] report24.sqlite[2/8] [====27%                     ] report24.sqlite[2/8] [====28%                     ] report24.sqlite[2/8] [=====29%                    ] report24.sqlite[2/8] [=====30%                    ] report24.sqlite[2/8] [=====31%                    ] report24.sqlite[2/8] [=====32%                    ] report24.sqlite[2/8] [======33%                   ] report24.sqlite[2/8] [======34%                   ] report24.sqlite[2/8] [======35%                   ] report24.sqlite[2/8] [=======36%                  ] report24.sqlite[2/8] [=======37%                  ] report24.sqlite[2/8] [=======38%                  ] report24.sqlite[2/8] [=======39%                  ] report24.sqlite[2/8] [========40%                 ] report24.sqlite[2/8] [========41%                 ] report24.sqlite[2/8] [========42%                 ] report24.sqlite[2/8] [=========43%                ] report24.sqlite[2/8] [=========44%                ] report24.sqlite[2/8] [=========45%                ] report24.sqlite[2/8] [=========46%                ] report24.sqlite[2/8] [==========47%               ] report24.sqlite[2/8] [==========48%               ] report24.sqlite[2/8] [==========49%               ] report24.sqlite[2/8] [===========50%              ] report24.sqlite[2/8] [===========51%              ] report24.sqlite[2/8] [===========52%              ] report24.sqlite[2/8] [===========53%              ] report24.sqlite[2/8] [============54%             ] report24.sqlite[2/8] [============55%             ] report24.sqlite[2/8] [============56%             ] report24.sqlite[2/8] [============57%             ] report24.sqlite[2/8] [=============58%            ] report24.sqlite[2/8] [=============59%            ] report24.sqlite[2/8] [=============60%            ] report24.sqlite[2/8] [==============61%           ] report24.sqlite[2/8] [==============62%           ] report24.sqlite[2/8] [==============63%           ] report24.sqlite[2/8] [==============64%           ] report24.sqlite[2/8] [===============65%          ] report24.sqlite[2/8] [===============66%          ] report24.sqlite[2/8] [===============67%          ] report24.sqlite[2/8] [================68%         ] report24.sqlite[2/8] [================69%         ] report24.sqlite[2/8] [================70%         ] report24.sqlite[2/8] [================71%         ] report24.sqlite[2/8] [=================72%        ] report24.sqlite[2/8] [=================73%        ] report24.sqlite[2/8] [=================74%        ] report24.sqlite[2/8] [==================75%       ] report24.sqlite[2/8] [==================76%       ] report24.sqlite[2/8] [==================77%       ] report24.sqlite[2/8] [==================78%       ] report24.sqlite[2/8] [===================79%      ] report24.sqlite[2/8] [===================80%      ] report24.sqlite[2/8] [===================81%      ] report24.sqlite[2/8] [===================82%      ] report24.sqlite[2/8] [====================83%     ] report24.sqlite[2/8] [====================84%     ] report24.sqlite[2/8] [====================85%     ] report24.sqlite[2/8] [=====================86%    ] report24.sqlite[2/8] [=====================87%    ] report24.sqlite[2/8] [=====================88%    ] report24.sqlite[2/8] [=====================89%    ] report24.sqlite[2/8] [======================90%   ] report24.sqlite[2/8] [======================91%   ] report24.sqlite[2/8] [======================92%   ] report24.sqlite[2/8] [=======================93%  ] report24.sqlite[2/8] [=======================94%  ] report24.sqlite[2/8] [=======================95%  ] report24.sqlite[2/8] [=======================96%  ] report24.sqlite[2/8] [========================97% ] report24.sqlite[2/8] [========================98% ] report24.sqlite[2/8] [========================99% ] report24.sqlite[2/8] [========================100%] report24.sqlite[2/8] [========================100%] report24.sqlite
+[3/8] Executing 'nvtxsum' stats report
+[4/8] Executing 'osrtsum' stats report
+
+Operating System Runtime API Statistics:
+
+ Time (%)  Total Time (ns)  Num Calls    Avg (ns)       Med (ns)      Min (ns)     Max (ns)    StdDev (ns)           Name         
+ --------  ---------------  ---------  -------------  -------------  -----------  -----------  -----------  ----------------------
+     51.0     69,7004,4269        357    1952,3933.5    1006,4010.0         2331  1,6550,0352  2838,1260.3  poll                  
+     25.6     35,0045,4103          7  5,0006,4871.9  5,0006,1895.0  5,0005,8954  5,0008,0225       7265.0  pthread_cond_timedwait
+     22.5     30,7018,0299        566     542,4346.8     205,6131.0       1,1915    2073,6532   437,5024.6  sem_timedwait         
+      0.7        9202,7126       1218       7,5555.9       2,4561.0         1029    2251,5628    89,0745.9  ioctl                 
+      0.1        1885,9792         45      41,9106.5         1760.0         1004    1867,8097   278,3756.0  fopen                 
+      0.0         105,0872         33       3,1844.6         4590.0         3109      70,0942    12,0522.9  mmap64                
+      0.0          28,9481         25       1,1579.2         4346.0         1199      16,4034     3,2267.6  mmap                  
+      0.0          25,0415          5       5,0083.0       4,6876.0       2,6548       8,6252     2,2014.6  pthread_create        
+      0.0          19,3675         54         3586.6         2918.0         1364         9735       1597.6  open64                
+      0.0           9,7248          1       9,7248.0       9,7248.0       9,7248       9,7248          0.0  pthread_cond_wait     
+      0.0           6,6691         15         4446.1         4065.0         1738         9030       2244.8  munmap                
+      0.0           3,1157         12         2596.4         1461.5         1005         7228       2216.5  fclose                
+      0.0           2,9717          1       2,9717.0       2,9717.0       2,9717       2,9717          0.0  fgets                 
+      0.0           2,7171          6         4528.5         3587.0         1677         8035       2820.6  open                  
+      0.0           1,5211          3         5070.3         4723.0         3039         7449       2225.4  pipe2                 
+      0.0           1,4964          8         1870.5         1620.5         1024         4034        938.8  write                 
+      0.0           1,3226          8         1653.3         1740.5         1010         2882        634.2  read                  
+      0.0           1,3056          2         6528.0         6528.0         6429         6627        140.0  socket                
+      0.0           1,1604          2         5802.0         5802.0         4441         7163       1924.7  fread                 
+      0.0           1,1513          3         3837.7         3728.0         2915         4870        982.1  pthread_cond_broadcast
+      0.0             8389          1         8389.0         8389.0         8389         8389          0.0  connect               
+      0.0             4520          3         1506.7         1729.0         1002         1789        438.1  fcntl                 
+      0.0             3961          2         1980.5         1980.5         1682         2279        422.1  fwrite                
+      0.0             1399          1         1399.0         1399.0         1399         1399          0.0  bind                  
+
+[5/8] Executing 'cudaapisum' stats report
+
+CUDA API Statistics:
+
+ Time (%)  Total Time (ns)  Num Calls   Avg (ns)    Med (ns)  Min (ns)   Max (ns)     StdDev (ns)                Name              
+ --------  ---------------  ---------  -----------  --------  --------  -----------  -------------  -------------------------------
+     82.4      6,4733,7261          8  8091,7157.6  5,4921.5    1,6815  4,6844,1876  1,6857,3034.5  cudaFree                       
+     16.2      1,2739,1595          6  2123,1932.5    8231.5      6919  1,2734,5852    5198,4991.6  cudaMallocManaged              
+      0.5         413,0742        500       8261.5    5629.5      1411      47,4097       2,1652.8  cudaDeviceSynchronize          
+      0.5         383,2894        170     2,2546.4  1,6584.0    1,2470       7,9511       1,3163.1  cudaLaunchKernel               
+      0.2         118,3190         80     1,4789.9  1,0929.0      7501       3,8333         8515.5  cudaMemsetAsync                
+      0.0          30,7693         80       3846.2    3165.0      2449         8006         1498.4  cudaEventRecord                
+      0.0          26,2969        160       1643.6    1206.5       619         7143         1124.0  cudaStreamGetCaptureInfo_v10010
+      0.0          26,1666        754        347.0     362.5        86         2914          241.4  cuGetProcAddress               
+      0.0          25,8169         80       3227.1    2704.5      2059         7731         1434.0  cudaEventQuery                 
+      0.0          14,7312          3     4,9104.0  5,0372.0      2790       9,4150       4,5693.2  cudaMalloc                     
+      0.0           1,2455         18        691.9     291.5       279         6861         1542.1  cudaEventCreateWithFlags       
+      0.0             3402          2       1701.0    1701.0      1024         2378          957.4  cuInit                         
+
+[6/8] Executing 'gpukernsum' stats report
+
+CUDA Kernel Statistics:
+
+ Time (%)  Total Time (ns)  Instances  Avg (ns)  Med (ns)  Min (ns)  Max (ns)  StdDev (ns)               Name              
+ --------  ---------------  ---------  --------  --------  --------  --------  -----------  -------------------------------
+     29.8          71,7758         30  2,3925.3    8288.0      7968   47,2350     8,4695.0  volta_sgemm_128x32_nn          
+     15.3          36,8353         20  1,8417.7  1,8400.0    1,7696    1,9648        706.3  volta_sgemm_128x128_nn         
+     11.0          26,3583         20  1,3179.2  1,3279.5    1,2640    1,3696        385.8  volta_sgemm_128x64_nn          
+     10.6          25,5195         20  1,2759.8  1,2847.5    1,2384    1,3248        262.5  volta_sgemm_64x64_nn           
+      9.2          22,2238         20  1,1111.9  1,1232.0      9888    1,2320       1067.0  volta_sgemm_128x32_sliced1x4_nn
+      8.4          20,3101         20  1,0155.1  1,0144.0      8064    1,2352       1967.0  volta_sgemm_32x32_sliced1x4_nn 
+      8.1          19,5903         20    9795.2    9824.0      8160    1,1360       1531.8  volta_sgemm_64x32_sliced1x4_nn 
+      7.5          18,0385         20    9019.3    9072.0      8320      9985        529.1  volta_sgemm_32x128_nn          
+
+[7/8] Executing 'gpumemtimesum' stats report
+
+CUDA Memory Operation Statistics (by time):
+
+ Time (%)  Total Time (ns)  Count  Avg (ns)  Med (ns)  Min (ns)  Max (ns)  StdDev (ns)              Operation            
+ --------  ---------------  -----  --------  --------  --------  --------  -----------  ---------------------------------
+     53.5           9,3506     80    1168.8    1152.0      1088      1760        101.7  [CUDA memset]                    
+     32.6           5,6947     16    3559.2    3023.0      2143      7168       1623.4  [CUDA Unified Memory memcpy HtoD]
+     14.0           2,4446      3    8148.7    8479.0      2687    1,3280       5304.2  [CUDA Unified Memory memcpy DtoH]
+
+[8/8] Executing 'gpumemsizesum' stats report
+
+CUDA Memory Operation Statistics (by size):
+
+ Total (MB)  Count  Avg (MB)  Med (MB)  Min (MB)  Max (MB)  StdDev (MB)              Operation            
+ ----------  -----  --------  --------  --------  --------  -----------  ---------------------------------
+      0.262      3     0.087     0.098     0.004     0.160        0.078  [CUDA Unified Memory memcpy DtoH]
+      0.262     16     0.016     0.012     0.004     0.057        0.017  [CUDA Unified Memory memcpy HtoD]
+      0.003     80     0.000     0.000     0.000     0.000        0.000  [CUDA memset]                    
+
+Generated:
+    /home/lzydaphne/gpgpu-sim_distribution/cublas_example/report25.nsys-rep
+    /home/lzydaphne/gpgpu-sim_distribution/cublas_example/report24.sqlite
