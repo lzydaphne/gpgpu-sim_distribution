@@ -143,17 +143,20 @@ int main() {
     cublasCreate(&handle);
     
     // printf(">>>>>>>>>>>>>>>>> test fp32 >>>>>>>>>>>>>>>>>\n");
-    // for (int algo = start_algo; algo <= end_algo; ++algo)
-    //     test_gemm(handle, m, n, k, fA, fB, fC, &f_alpha, &f_beta, algo, iteration,0);
+    //!sp
+    for (int algo = start_algo; algo <= end_algo; ++algo)
+        test_gemm(handle, m, n, k, fA, fB, fC, &f_alpha, &f_beta, algo, iteration,0);
     // for (int algo = start_algo_t_op; algo <= end_algo_t_op; ++algo)
     //     test_gemm(handle, m, n, k, fA, fB, fC, &f_alpha, &f_beta, algo, iteration,0);
     
 
     printf(">>>>>>>>>>>>>>>>> test fp16 >>>>>>>>>>>>>>>>>\n");
     // test_gemm(handle, m, n, k, hA, hB, hC, &f_alpha, &f_beta, 2, iteration,1);
-    // for (int algo = 0; algo <= end_algo; ++algo)
-    //     test_gemm(handle, m, n, k, hA, hB, hC, &f_alpha, &f_beta, algo, iteration,1);
+    //! sp
+    for (int algo = 0; algo <= end_algo; ++algo)
+        test_gemm(handle, m, n, k, hA, hB, hC, &f_alpha, &f_beta, algo, iteration,1);
         // test_gemm(handle, m, n, k, hA, hB, hC, &h_alpha, &h_beta, algo, iteration,1);
+    //! tc
     for (int algo = start_algo_t_op; algo <= end_algo_t_op; ++algo)
         test_gemm(handle, m, n, k, hA, hB, hC, &f_alpha, &f_beta, algo, iteration,1);
         // test_gemm(handle, m, n, k, hA, hB, hC, &h_alpha, &h_beta, algo, iteration,1);
