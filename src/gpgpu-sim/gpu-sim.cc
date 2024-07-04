@@ -853,7 +853,62 @@ void gpgpu_sim::decrement_kernel_latency() {
 
 //! kernel counter: hardcoded for kernel size: 4 kernel and init as 0
 std::vector<unsigned> m_kernel_selection_count{4, 0};
+// kernel_info_t *gpgpu_sim::select_kernel() {
+//   if (m_kernel_selection_count[m_last_issued_kernel] < 4 &&
+//       m_running_kernels[m_last_issued_kernel] &&
+//       !m_running_kernels[m_last_issued_kernel]->no_more_ctas_to_run() &&
+//       !m_running_kernels[m_last_issued_kernel]->m_kernel_TB_latency) {
+//     m_kernel_selection_count[m_last_issued_kernel]++;
+//     unsigned launch_uid = m_running_kernels[m_last_issued_kernel]->get_uid();
+//     if (std::find(m_executed_kernel_uids.begin(),
+//     m_executed_kernel_uids.end(),
+//                   launch_uid) == m_executed_kernel_uids.end()) {
+//       m_running_kernels[m_last_issued_kernel]->start_cycle =
+//           gpu_sim_cycle + gpu_tot_sim_cycle;
+//       // m_executed_kernel_uids.push_back(launch_uid);
+//       //
+//       m_executed_kernel_names.push_back(
+//           m_running_kernels[m_last_issued_kernel]->name());
+//     }
+//     m_executed_kernel_uids.push_back(launch_uid);
+//     m_executed_kernel_names.push_back(
+//         m_running_kernels[m_last_issued_kernel]->name());
+//     return m_running_kernels[m_last_issued_kernel];
+//   }
 
+//   for (unsigned n = 0; n < m_running_kernels.size(); n++) {
+//     unsigned idx =
+//         (n + m_last_issued_kernel + 1) % m_config.max_concurrent_kernel;
+//     if (kernel_more_cta_left(m_running_kernels[idx]) &&
+//         !m_running_kernels[idx]->m_kernel_TB_latency) {
+//       m_kernel_selection_count[idx] = 1;
+//       m_last_issued_kernel = idx;
+//       // m_running_kernels[idx]->start_cycle = gpu_sim_cycle +
+//       // gpu_tot_sim_cycle; record this kernel for stat print if it is the
+//       first
+//       // time this kernel is selected for execution
+//       unsigned launch_uid = m_running_kernels[idx]->get_uid();
+
+//       if (std::find(m_executed_kernel_uids.begin(),
+//                     m_executed_kernel_uids.end(),
+//                     launch_uid) == m_executed_kernel_uids.end()) {
+//         m_running_kernels[idx]->start_cycle = gpu_sim_cycle +
+//         gpu_tot_sim_cycle;
+//       }
+
+//       // assert(std::find(m_executed_kernel_uids.begin(),
+//       //                  m_executed_kernel_uids.end(),
+//       //                  launch_uid) == m_executed_kernel_uids.end());
+//       m_executed_kernel_uids.push_back(launch_uid);
+//       m_executed_kernel_names.push_back(m_running_kernels[idx]->name());
+
+//       return m_running_kernels[idx];
+//     }
+//   }
+//   return NULL;
+// }
+
+// original kernel
 kernel_info_t *gpgpu_sim::select_kernel() {
   if (m_running_kernels[m_last_issued_kernel] &&
       !m_running_kernels[m_last_issued_kernel]->no_more_ctas_to_run() &&

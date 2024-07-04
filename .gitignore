@@ -2,6 +2,8 @@
 *.swp
 *.swo
 
+cuda-samples
+
 src/intersim2/lex.yy.c
 src/intersim2/y.tab.c
 src/intersim2/y.tab.h

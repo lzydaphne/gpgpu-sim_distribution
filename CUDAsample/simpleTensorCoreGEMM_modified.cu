@@ -55,15 +55,22 @@ void curandErrCheck_(curandStatus_t stat, const char *file, int line) {
 #include <mma.h>
 using namespace nvcuda;
 
+// // Must be multiples of 16 for wmma code to work
+// #define MATRIX_M 16384
+// #define MATRIX_N 16384
+// #define MATRIX_K 16384
 // Must be multiples of 16 for wmma code to work
-#define MATRIX_M 16384
-#define MATRIX_N 16384
-#define MATRIX_K 16384
+#define MATRIX_M 64
+#define MATRIX_N 64
+#define MATRIX_K 64
 
 // The only dimensions currently supported by WMMA
 const int WMMA_M = 16;
 const int WMMA_N = 16;
 const int WMMA_K = 16;
+
+#define THRESHOLD_ROW 48
+#define THRESHOLD_COL 48
 
 
 // Performs an MxNxK GEMM (C=alpha*A*B + beta*C) assuming:
@@ -81,6 +88,12 @@ __global__ void wmma_example(half *a, half *b, float *c, int M, int N, int K, fl
    // Tile using a 2D grid
    int warpM = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
    int warpN = (blockIdx.y * blockDim.y + threadIdx.y);
+   // only first thread in  warp print
+   if (threadIdx.x % warpSize == 0 ) {
+      printf("warpM = %d, warpN = %d\n", warpM, warpN);
+   }
+
+   if(warpM * WMMA_M >= THRESHOLD_ROW && warpN * WMMA_N >= THRESHOLD_COL) return;
  
    // Declare the fragments
    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> a_frag;
@@ -101,6 +114,10 @@ __global__ void wmma_example(half *a, half *b, float *c, int M, int N, int K, fl
       // Bounds checking
       if (aRow < M && aCol < K && bRow < K && bCol < N) {
          // Load the inputs
+         // only first thread in  warp print
+         if (threadIdx.x % warpSize == 0 ) {
+            printf("aRow = %d, aCol = %d, bRow = %d, bCol = %d\n", aRow, aCol, bRow, bCol);
+         }
          wmma::load_matrix_sync(a_frag, a + aRow + aCol * lda, lda);
          wmma::load_matrix_sync(b_frag, b + bRow + bCol * ldb, ldb);
 
@@ -113,6 +130,10 @@ __global__ void wmma_example(half *a, half *b, float *c, int M, int N, int K, fl
    // Load in the current value of c, scale it by beta, and add this our result scaled by alpha
    int cRow = warpM * WMMA_M;
    int cCol = warpN * WMMA_N;
+
+   if (threadIdx.x % warpSize == 0 ) {
+      printf("cRow = %d, cCol = %d\n", cRow, cCol);
+   }
 
    if (cRow < M && cCol < N) {
       wmma::load_matrix_sync(c_frag, c + cRow + cCol * ldc, ldc, wmma::mem_col_major);
@@ -214,6 +235,7 @@ int main(int argc, char* argv[]) {
 
    gridDim.x = (MATRIX_M + (WMMA_M * blockDim.x / 32 - 1)) / (WMMA_M * blockDim.x / 32);
    gridDim.y = (MATRIX_N + WMMA_N * blockDim.y - 1) / (WMMA_N * blockDim.y);
+   printf("wmma_example: gridDim.x = %d, gridDim.y = %d\n", gridDim.x,gridDim.y);
    
    printf("Running with wmma...\n");
    cudaErrCheck(cudaEventRecord(startWMMA));

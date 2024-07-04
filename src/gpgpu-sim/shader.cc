@@ -32,9 +32,13 @@
 // #include "../abstract_hardware_model.h"
 
 #include "shader.h"
+
 #include <float.h>
 #include <limits.h>
 #include <string.h>
+//!
+#include <regex>  // Include the regex header
+
 #include "../../libcuda/gpgpu_context.h"
 #include "../cuda-sim/cuda-sim.h"
 #include "../cuda-sim/ptx-stats.h"
@@ -1201,6 +1205,14 @@ void scheduler_unit::order_by_priority(
   }
 }
 
+//! added variables
+int counter_sp = 0;
+int counter_tc = 0;
+int counter_tc_load = 0;
+int counter_load = 0;
+bool wmma_is_launched =
+    false;  //* in order to check filter and get wmma_example kernel
+
 //! modified
 void scheduler_unit::cycle() {
   SCHED_DPRINTF("scheduler_unit::cycle()\n");
@@ -1302,18 +1314,19 @@ void scheduler_unit::cycle() {
       bool warp_inst_issued = false;
       unsigned pc, rpc;
       m_shader->get_pdom_stack_top_info(warp_id, pI, &pc, &rpc);
-      //! test
+      //! just print insn
       // printf("ptx_get_insn_str: %s\n",
       //        m_shader->m_config->gpgpu_ctx->func_sim->ptx_get_insn_str(pc)
       //            .c_str());
-      //! printf as below
-      // printf(
+      //! print insn and other info as below
+      //   printf(
       //     "Warp (warp_id %u, dynamic_warp_id %u) has valid instruction
       //     (%s)\n",
-      //     (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(),
-      //     m_shader->m_config->gpgpu_ctx->func_sim->ptx_get_insn_str(pc)
-      //         .c_str());
-      
+      //     (*iter)->get_warp_id(),
+      //     (*iter)->get_dynamic_warp_id(),
+      //     m_shader->m_config->gpgpu_ctx->func_sim->ptx_get_insn_str(pc).c_str()
+      // );
+
       SCHED_DPRINTF(
           "Warp (warp_id %u, dynamic_warp_id %u) has valid instruction (%s)\n",
           (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(),
@@ -1342,6 +1355,20 @@ void scheduler_unit::cycle() {
 
             assert(warp(warp_id).inst_in_pipeline());
 
+            //! detect which kernel is running using regex
+            // const char *instructionCStr =
+            //     m_shader->m_config->gpgpu_ctx->func_sim->ptx_get_insn_str(pc)
+            //         .c_str();
+            std::string instruction =
+                m_shader->m_config->gpgpu_ctx->func_sim->ptx_get_insn_str(pc);
+            std::regex launchPattern(
+                R"(_Z12wmma_exampleP6__halfS0_Pfiiiff_param_)");
+            if (!wmma_is_launched) {
+              wmma_is_launched = std::regex_search(instruction, launchPattern);
+              std::cout << "wmma_is_launched: " << wmma_is_launched
+                        << "instruction :" << instruction << std::endl;
+            }
+
             //* distinguish different ops
             // memory access operations
             if ((pI->op == LOAD_OP) || (pI->op == STORE_OP) ||
@@ -1358,6 +1385,16 @@ void scheduler_unit::cycle() {
                 issued_inst = true;
                 warp_inst_issued = true;
                 previous_issued_inst_exec_type = exec_unit_type_t::MEM;
+                //! check kernel and count
+                if (wmma_is_launched) {
+                  if (pI->op == LOAD_OP) {
+                    counter_load++;
+                    printf("counter_load: %d\n", counter_load);
+                  } else if (pI->op == TENSOR_CORE_LOAD_OP) {
+                    counter_tc_load++;
+                    printf("counter_tc_load: %d\n", counter_tc_load);
+                  }
+                }
               }
             } else {
               // This code need to be refactored
@@ -1426,6 +1463,12 @@ void scheduler_unit::cycle() {
                   issued_inst = true;
                   warp_inst_issued = true;
                   previous_issued_inst_exec_type = exec_unit_type_t::SP;
+
+                  //! check kernel and count
+                  if (wmma_is_launched) {
+                    counter_sp++;
+                    printf("counter_sp: %d\n", counter_sp);
+                  }
                 } else if (execute_on_INT) {
                   m_shader->issue_warp(*m_int_out, pI, active_mask, warp_id,
                                        m_id);
@@ -1491,11 +1534,19 @@ void scheduler_unit::cycle() {
                   issued_inst = true;
                   warp_inst_issued = true;
                   previous_issued_inst_exec_type = exec_unit_type_t::TENSOR;
+
+                  //! check kernel and count
+                  if (wmma_is_launched && pI->op == TENSOR_CORE_OP) {
+                    counter_tc++;
+                    printf("counter_tc: %d\n", counter_tc);
+                  }
                 }
-              } else if ((pI->op >= SPEC_UNIT_START_ID) &&
-                         !(diff_exec_units &&
-                           previous_issued_inst_exec_type ==
-                               exec_unit_type_t::SPECIALIZED)) {
+              }
+
+              else if ((pI->op >= SPEC_UNIT_START_ID) &&
+                       !(diff_exec_units &&
+                         previous_issued_inst_exec_type ==
+                             exec_unit_type_t::SPECIALIZED)) {
                 unsigned spec_id = pI->op - SPEC_UNIT_START_ID;
                 assert(spec_id < m_shader->m_config->m_specialized_unit.size());
                 register_set *spec_reg_set = m_spec_cores_out[spec_id];
@@ -1533,8 +1584,15 @@ void scheduler_unit::cycle() {
         warp(warp_id).ibuffer_flush();
       }
 
-      // do on warp_issued
+      // do on warp issued
       if (warp_inst_issued) {
+        //! print insn after issue as below
+        printf(
+            "Warp (warp_id %u, dynamic_warp_id %u) has issued instruction "
+            "(%s)\n",
+            (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(),
+            m_shader->m_config->gpgpu_ctx->func_sim->ptx_get_insn_str(pc)
+                .c_str());
         SCHED_DPRINTF(
             "Warp (warp_id %u, dynamic_warp_id %u) issued %u instructions\n",
             (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(), issued);
@@ -1547,7 +1605,7 @@ void scheduler_unit::cycle() {
       checked++;
     }
 
-    //* Post-Issuance Handling: After attempting to issue instructions from a
+    //! Post-Issuance Handling: After attempting to issue instructions from a
     // warp
     // ,the scheduler updates various internal states and statistics,
     // including marking the warp as the last supervised warp issued
@@ -2042,6 +2100,7 @@ void shader_core_ctx::writeback() {
       // printf("-----END---TENSOR-----\n");
       tensor_gpu_sim_cycle +=
           exp_gpu_sim_cycle - tmp_tensor_gpu_sim_cycle[cur_warp_id];
+
       // printf(
       //     "cur_warp_id: %d, exp_gpu_sim_cycle: %llu, "
       //     "tmp_tensor_gpu_sim_cycle[cur_warp_id]: %llu, tensor_gpu_sim_cycle:
@@ -2051,7 +2110,8 @@ void shader_core_ctx::writeback() {
       //     tmp_tensor_gpu_sim_cycle[cur_warp_id], tensor_gpu_sim_cycle);
 
       // printf("tensor_gpu_sim_cycle %llu\n", tensor_gpu_sim_cycle);
-      // printf("Instruction: %d\n", pipe_reg->op);
+      printf("cur_warp_id: %d, TC Instruction: %d\n", cur_warp_id,
+             pipe_reg->op);
       // printf("Num of Tensor Core Op: %llu\n", m_num_of_tensor_core_op);
 
     } else if (pipe_reg->op == SP_OP) {
@@ -2069,12 +2129,12 @@ void shader_core_ctx::writeback() {
       // printf("warp_id: %d\n", cur_warp_id);
       // printf(" exp_gpu_sim_cycle %llu\n", exp_gpu_sim_cycle);
       // printf("sp_gpu_sim_cycle %llu\n", sp_gpu_sim_cycle);
-      // printf("Instruction: %d\n", pipe_reg->op);
+      printf("SP Instruction: %d\n", pipe_reg->op);
       // printf("Num of SP Op: %llu\n", m_num_of_SP_op);
 
     } else {
       m_num_of_non_tensor_core_non_SP_op++;
-      // printf("Instruction: %d\n", pipe_reg->op);
+      printf("Other Instruction: %d\n", pipe_reg->op);
       // printf(" Num of other Op: %llu\n", m_num_of_non_tensor_core_non_SP_op);
     }
     //! Updating Simulation Statistics
@@ -4226,9 +4286,10 @@ void shd_warp_t::print_ibuffer(FILE *fout) const {
   fprintf(fout, "  ibuffer[%2u] : ", m_warp_id);
   for (unsigned i = 0; i < IBUFFER_SIZE; i++) {
     const inst_t *inst = m_ibuffer[i].m_inst;
-    if (inst)
+    if (inst) {
+      //! try to modify
       inst->print_insn(fout);
-    else if (m_ibuffer[i].m_valid)
+    } else if (m_ibuffer[i].m_valid)
       fprintf(fout, " <invalid instruction> ");
     else
       fprintf(fout, " <empty> ");
