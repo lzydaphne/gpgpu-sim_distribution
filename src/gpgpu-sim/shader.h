@@ -1229,7 +1229,6 @@ class tensor_core : public pipelined_simd_unit {
   virtual bool can_issue(const warp_inst_t &inst) const {
     switch (inst.op) {
       case TENSOR_CORE_OP:
-        //! printf("inst.op = TENSOR_CORE_OP\n");
         break;
       default:
         return false;
@@ -2547,6 +2546,8 @@ class shader_core_ctx : public core_t {
   unsigned long long m_num_of_non_tensor_core_non_SP_op = 0;
   unsigned long long m_num_of_tensor_core_op = 0;
   unsigned long long m_num_of_SP_op = 0;
+  unsigned long long m_num_of_TCLOAD_op = 0;
+  unsigned long long m_num_of_LOAD_op = 0;
 
   unsigned int m_occupied_n_threads;
   unsigned int m_occupied_shmem;

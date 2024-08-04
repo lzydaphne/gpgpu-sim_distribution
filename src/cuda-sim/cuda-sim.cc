@@ -1778,7 +1778,7 @@ int tensorcore_op(int inst_opcode) {
     return 0;
 }
 /**
- * Executes a PTX instruction.
+ *! Executes a PTX instruction.
  *
  * @param inst The warp instruction to execute
  * @param lane_id The id of the lane within the warp
@@ -1840,6 +1840,75 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
         pJ = new ptx_instruction(*pI);
         *((warp_inst_t *)pJ) = inst;  // copy active mask information
         pI = pJ;
+      }
+      //! try to check mma.load address
+      // Add this check for MMA load operations
+      if (pI->get_opcode() == MMA_LD_OP) {
+        printf("PTX Instruction: %s (wmma::load_matrix_sync) at %s:%u\n",
+               pI->get_opcode_cstr(), pI->source_file(), pI->source_line());
+
+        addr_t addr = last_eaddr();
+        memory_space_t space = last_space();
+
+        // Function to convert memory_space_t to string
+        auto space_to_string = [](const memory_space_t &space) {
+          switch (space.get_type()) {
+            case undefined_space:
+              return "undefined";
+            case reg_space:
+              return "register";
+            case local_space:
+              return "local";
+            case shared_space:
+              return "shared";
+            case sstarr_space:
+              return "sstarr";
+            case param_space_unclassified:
+              return "param (unclassified)";
+            case param_space_kernel:
+              return "param (kernel)";
+            case param_space_local:
+              return "param (local)";
+            case const_space:
+              return "constant";
+            case tex_space:
+              return "texture";
+            case surf_space:
+              return "surface";
+            case global_space:
+              return "global";
+            case generic_space:
+              return "generic";
+            case instruction_space:
+              return "instruction";
+            default:
+              return "unknown";
+          }
+        };
+
+        //* this "addr" seems to be wrong?
+        // printf("  MMA Load: Address 0x%llx\n", (unsigned long long)addr);
+        printf("  Memory Space: %s\n", space_to_string(space));
+        printf("  Memory Bank: %u\n", space.get_bank());
+
+        // // Additional checks based on memory space
+        // if (space.is_const()) {
+        //   printf("  This is a constant memory access\n");
+        // } else if (space.is_local()) {
+        //   printf("  This is a local memory access\n");
+        // } else if (space.is_global()) {
+        //   printf("  This is a global memory access\n");
+        // }
+
+        // // Use last_eaddr() to get the memory address
+        // addr_t addr = last_eaddr();
+
+        // printf("  Loading from address 0x%llx\n", (unsigned long long)addr);
+
+        // // If you want to print the size of the data being loaded
+        // unsigned to_type = pI->get_type();
+        // unsigned data_size = datatype2size(to_type);
+        // printf("  Data size: %u bytes\n", data_size);
       }
 
       if (((inst_opcode == MMA_OP || inst_opcode == MMA_LD_OP ||
@@ -1923,6 +1992,51 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
         unsigned to_type = pI->get_type();
         insn_data_size = datatype2size(to_type);
         insn_memory_op = pI->has_memory_read() ? memory_load : memory_store;
+        // Function to convert memory_space_t to string
+        auto space_to_string = [](const memory_space_t &space) {
+          switch (space.get_type()) {
+            case undefined_space:
+              return "undefined";
+            case reg_space:
+              return "register";
+            case local_space:
+              return "local";
+            case shared_space:
+              return "shared";
+            case sstarr_space:
+              return "sstarr";
+            case param_space_unclassified:
+              return "param (unclassified)";
+            case param_space_kernel:
+              return "param (kernel)";
+            case param_space_local:
+              return "param (local)";
+            case const_space:
+              return "constant";
+            case tex_space:
+              return "texture";
+            case surf_space:
+              return "surface";
+            case global_space:
+              return "global";
+            case generic_space:
+              return "generic";
+            case instruction_space:
+              return "instruction";
+            default:
+              return "unknown";
+          }
+        };
+
+        //* Add this print statement
+        if (pI->has_memory_read()) {
+          printf(
+              "PTX Instruction: %s (at %s:%u) is reading memory. Address: "
+              "0x%llx, Size: %u bytes, Space: %s\n",
+              pI->get_opcode_cstr(), pI->source_file(), pI->source_line(),
+              (unsigned long long)insn_memaddr, insn_data_size,
+              space_to_string(insn_space));
+        }
       }
     }
 

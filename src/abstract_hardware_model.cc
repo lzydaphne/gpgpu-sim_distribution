@@ -45,8 +45,15 @@
 unsigned long long exp_gpu_sim_cycle = 0;
 unsigned long long tensor_gpu_sim_cycle = 0;
 std::vector<unsigned long long> tmp_tensor_gpu_sim_cycle(32, 0);
+std::vector<bool> tmp_tensor_counted(32, false);
 unsigned long long sp_gpu_sim_cycle = 0;
 std::vector<unsigned long long> tmp_sp_gpu_sim_cycle(32, 0);
+std::vector<bool> tmp_sp_counted(32, false);
+unsigned long long tensor_load_gpu_sim_cycle = 0;
+std::vector<unsigned long long> tmp_tensor_load_gpu_sim_cycle(32, 0);
+unsigned long long load_gpu_sim_cycle = 0;
+std::vector<unsigned long long> tmp_load_gpu_sim_cycle(32, 0);
+bool accumulated = false;
 
 void mem_access_t::init(gpgpu_context *ctx) {
   gpgpu_ctx = ctx;

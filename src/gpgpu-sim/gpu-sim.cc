@@ -908,7 +908,7 @@ std::vector<unsigned> m_kernel_selection_count{4, 0};
 //   return NULL;
 // }
 
-// original kernel
+//! original kernel scheduler
 kernel_info_t *gpgpu_sim::select_kernel() {
   if (m_running_kernels[m_last_issued_kernel] &&
       !m_running_kernels[m_last_issued_kernel]->no_more_ctas_to_run() &&
@@ -2077,7 +2077,9 @@ void gpgpu_sim::cycle() {
     //! check if is wmma instruction
     gpu_sim_cycle++;
     exp_gpu_sim_cycle = gpu_sim_cycle;
-    // printf("gpu_sim_cycle: %llu\n", gpu_sim_cycle);
+    // accumulated = false; //* try to accumulate load insn. cycle
+    
+    printf("------------gpu_sim_cycle: %llu --------------\n", gpu_sim_cycle);
 
     if (g_interactive_debugger_enabled) gpgpu_debug();
 

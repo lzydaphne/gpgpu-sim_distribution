@@ -60,9 +60,13 @@ void cudaErrCheck_(cudaError_t stat, const char *file, int line) {
 using namespace nvcuda;
 
 // Must be multiples of 16 for wmma code to work
-#define MATRIX_M 64
-#define MATRIX_N 64
-#define MATRIX_K 64
+#define MATRIX_M 32
+#define MATRIX_N 32
+#define MATRIX_K 32
+// #define MATRIX_M 64
+// #define MATRIX_N 64
+// #define MATRIX_K 64
+
 
 // The only dimensions currently supported by WMMA
 const int WMMA_M = 16;
@@ -104,10 +108,14 @@ __global__ void wmma_example(half *a, half *b, float *c, int M, int N, int K,
 
     int bRow = i;
     int bCol = warpN * WMMA_N;
+    // printf("Thread (%d, %d) working on aRow = %d, aCol = %d, bRow = %d, bCol = %d\n", 
+    //   threadIdx.x, threadIdx.y, aRow, aCol, bRow, bCol);
 
     // Bounds checking
     if (aRow < M && aCol < K && bRow < K && bCol < N) {
       // Load the inputs
+      // printf("Thread (%d, %d) loading A from address %p\n", 
+      //  threadIdx.x, threadIdx.y, (void*)(a + aRow + aCol * lda));
       wmma::load_matrix_sync(a_frag, a + aRow + aCol * lda, lda);
       wmma::load_matrix_sync(b_frag, b + bRow + bCol * ldb, ldb);
 
@@ -218,9 +226,15 @@ cudaErrCheck(cudaMemcpy(c_wmma, h_c, MATRIX_M * MATRIX_N * sizeof(float), cudaMe
 //     b_fp16[i] = __float2half_rn(b_fp32[i]);
 // }
 
-convertFp32ToFp16<<<(MATRIX_M * MATRIX_K + 255) / 256, 256>>>(
+//* 4 warps
+// convertFp32ToFp16<<<(MATRIX_M * MATRIX_K + 127) /128 , 128>>>(
+//     a_fp16, a_fp32, MATRIX_M * MATRIX_K);
+// convertFp32ToFp16<<<(MATRIX_K * MATRIX_N + 128) / 128, 128>>>(
+//     b_fp16, b_fp32, MATRIX_K * MATRIX_N);
+//* 1 warp
+convertFp32ToFp16<<<(MATRIX_M * MATRIX_K + 31) /32 , 32>>>(
     a_fp16, a_fp32, MATRIX_M * MATRIX_K);
-convertFp32ToFp16<<<(MATRIX_K * MATRIX_N + 255) / 256, 256>>>(
+convertFp32ToFp16<<<(MATRIX_K * MATRIX_N + 31) / 32, 32>>>(
     b_fp16, b_fp32, MATRIX_K * MATRIX_N);
 
 //! For c matrix
@@ -237,13 +251,15 @@ convertFp32ToFp16<<<(MATRIX_K * MATRIX_N + 255) / 256, 256>>>(
 
   // blockDim.x must be a multple of warpSize
   // 128x4 means we have 16 warps and a block computes a 64x64 output tile
-  blockDim.x = 128;
-  blockDim.y = 4;
+  //* 128*4 = 512, 512/32 = 16 warps, 1 warp can compute 16x16 output tile, so 4*4 warps can compute 64x64 output tile
+  blockDim.x = 32;
+  blockDim.y = 1;
 
   gridDim.x =
       (MATRIX_M + (WMMA_M * blockDim.x / 32 - 1)) / (WMMA_M * blockDim.x / 32);
   gridDim.y = (MATRIX_N + WMMA_N * blockDim.y - 1) / (WMMA_N * blockDim.y);
 
+  printf("gridDim.x = %d, gridDim.y = %d\n", gridDim.x, gridDim.y);
   printf("Running with wmma...\n");
   
   wmma_example<<<gridDim, blockDim>>>(a_fp16, b_fp16, c_wmma, MATRIX_M,

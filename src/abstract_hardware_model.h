@@ -111,22 +111,22 @@ typedef unsigned long long addr_t;
 enum uarch_op_t {
   NO_OP = -1,
   ALU_OP = 1,
-  SFU_OP,
-  TENSOR_CORE_OP,
-  DP_OP,
-  SP_OP,
-  INTP_OP,
-  ALU_SFU_OP,
-  LOAD_OP,
-  TENSOR_CORE_LOAD_OP,
-  TENSOR_CORE_STORE_OP,
-  STORE_OP,
-  BRANCH_OP,
-  BARRIER_OP,
-  MEMORY_BARRIER_OP,
-  CALL_OPS,
-  RET_OPS,
-  EXIT_OPS,
+  SFU_OP, //2
+  TENSOR_CORE_OP,//3
+  DP_OP, //4
+  SP_OP, //5
+  INTP_OP, //6
+  ALU_SFU_OP, //7
+  LOAD_OP, //8
+  TENSOR_CORE_LOAD_OP, //9
+  TENSOR_CORE_STORE_OP, //10
+  STORE_OP, //11
+  BRANCH_OP, //12
+  BARRIER_OP, //13
+  MEMORY_BARRIER_OP, //14
+  CALL_OPS,   //15
+  RET_OPS,  //16
+  EXIT_OPS, //17
   SPECIALIZED_UNIT_1_OP = SPEC_UNIT_START_ID,
   SPECIALIZED_UNIT_2_OP,
   SPECIALIZED_UNIT_3_OP,
@@ -226,8 +226,18 @@ extern std::map<void *, size_t> pinned_memory_size;
 extern unsigned long long exp_gpu_sim_cycle;
 extern unsigned long long tensor_gpu_sim_cycle;
 extern std::vector<unsigned long long> tmp_tensor_gpu_sim_cycle;
+extern std::vector<bool> tmp_tensor_counted;
 extern unsigned long long sp_gpu_sim_cycle;
 extern std::vector<unsigned long long> tmp_sp_gpu_sim_cycle;
+extern std::vector<bool> tmp_sp_counted;
+extern unsigned long long tensor_load_gpu_sim_cycle;
+extern std::vector<unsigned long long> tmp_tensor_load_gpu_sim_cycle;
+extern unsigned long long load_gpu_sim_cycle;
+extern std::vector<unsigned long long> tmp_load_gpu_sim_cycle;
+extern bool accumulated;
+// extern bool tc_counted;
+// extern bool sp_counted;
+
 
 class kernel_info_t {
  public:

@@ -630,6 +630,9 @@ void shader_core_stats::print(FILE *fout) const {
   //! custom output
   fprintf(fout, "tensor_gpu_sim_cycle = %llu\n", tensor_gpu_sim_cycle);
   fprintf(fout, "sp_gpu_sim_cycle = %llu\n", sp_gpu_sim_cycle);
+  fprintf(fout, "tensor_load_gpu_sim_cycle = %llu\n",
+          tensor_load_gpu_sim_cycle);
+  fprintf(fout, "load_gpu_sim_cycle = %llu\n", load_gpu_sim_cycle);
 
   fprintf(fout, "gpgpu_n_tot_thrd_icount = %lld\n", thread_icount_uarch);
   fprintf(fout, "gpgpu_n_tot_w_icount = %lld\n", warp_icount_uarch);
@@ -1182,6 +1185,7 @@ void scheduler_unit::order_by_priority(
   result_list.clear();
   typename std::vector<T> temp = input_list;
 
+  //*gto, warp_limiting
   if (ORDERING_GREEDY_THEN_PRIORITY_FUNC == ordering) {
     T greedy_value = *last_issued_from_input;
     result_list.push_back(greedy_value);
@@ -1193,7 +1197,9 @@ void scheduler_unit::order_by_priority(
         result_list.push_back(*iter);
       }
     }
-  } else if (ORDERED_PRIORITY_FUNC_ONLY == ordering) {
+  }
+  //*old
+  else if (ORDERED_PRIORITY_FUNC_ONLY == ordering) {
     std::sort(temp.begin(), temp.end(), priority_func);
     typename std::vector<T>::iterator iter = temp.begin();
     for (unsigned count = 0; count < num_warps_to_add; ++count, ++iter) {
@@ -1523,6 +1529,14 @@ void scheduler_unit::cycle() {
                     m_tensor_core_out->has_free(
                         m_shader->m_config->sub_core_model, m_id);
 
+                //* try to calculate tc idle cycle
+
+                // bool tc_is_idle = m_tensor_core_out->has_free(
+                //     m_shader->m_config->sub_core_model, m_id);
+                // if (tc_is_idle) {
+                //   printf("tc_is_idle\n");
+                // }
+
                 if (tensor_core_pipe_avail) {
                   //! test
                   // printf(
@@ -1587,12 +1601,14 @@ void scheduler_unit::cycle() {
       // do on warp issued
       if (warp_inst_issued) {
         //! print insn after issue as below
-        printf(
-            "Warp (warp_id %u, dynamic_warp_id %u) has issued instruction "
-            "(%s)\n",
-            (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(),
-            m_shader->m_config->gpgpu_ctx->func_sim->ptx_get_insn_str(pc)
-                .c_str());
+        if (warp_id == 0) {
+          printf(
+              "Warp (warp_id %u, dynamic_warp_id %u) has issued instruction "
+              "(%s)\n",
+              (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(),
+              m_shader->m_config->gpgpu_ctx->func_sim->ptx_get_insn_str(pc)
+                  .c_str());
+        }
         SCHED_DPRINTF(
             "Warp (warp_id %u, dynamic_warp_id %u) issued %u instructions\n",
             (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(), issued);
@@ -1907,7 +1923,7 @@ void shader_core_ctx::execute() {
     //! modified for tensor core @lzydaphne
     // for (unsigned c = 0; c < multiplier; c++) m_fu[n]->cycle();
     for (unsigned c = 0; c < multiplier; c++) {
-      // std::string fu_name = m_fu[n]->get_name();
+      std::string fu_name = m_fu[n]->get_name();
       // printf(" m_fu name: %s \n", m_fu[n]->get_name());
       // if (fu_name.find("TENSOR") != std::string::npos) {
       //   m_tensor_core_cnt++;
@@ -1955,26 +1971,54 @@ void shader_core_ctx::execute() {
 
       int cur_warp_id = (*ready_reg)->warp_id();
       //* need to check if this is tensor core instruction
-      if ((*ready_reg)->op == TENSOR_CORE_OP) {
-        //! test cycle
-        tmp_tensor_gpu_sim_cycle[cur_warp_id] = exp_gpu_sim_cycle;
-        // printf("shader_core_ctx::execute():---START--TENSOR----\n");
-        // printf("cur_warp_id: %d , tmp_tensor_gpu_sim_cycle[cur_warp_id]
-        // %llu\n",
-        //        cur_warp_id, tmp_tensor_gpu_sim_cycle[cur_warp_id]);
+      if (cur_warp_id == 0) {
+        // if ((*ready_reg)->op == TENSOR_CORE_OP) {
+        //   //! cur warp not counted
+        //   if (!tmp_tensor_counted[cur_warp_id]) {
+        //     tmp_tensor_counted[cur_warp_id] = true;
+        //     tmp_tensor_gpu_sim_cycle[cur_warp_id] = exp_gpu_sim_cycle;
+        //     // printf("shader_core_ctx::execute():---START--TENSOR----\n");
+        //     // printf(
+        //     //     "shader_core_ctx::execute(): cur_warp_id: %d , "
+        //     //     "tmp_tensor_gpu_sim_cycle[cur_warp_id]: %llu\n",
+        //     //     cur_warp_id, tmp_tensor_gpu_sim_cycle[cur_warp_id]);
+        //     // printf("START: tmp_tensor_gpu_sim_cycle:
+        //     // %d\n",m_pipeline_reg[start_stage]->op);  // out printf(" Num
+        //     of
+        //     // Tensor Core Op: %llu\n", m_num_of_tensor_core_op);
+        //   }
 
-        // printf("START: tmp_tensor_gpu_sim_cycle: %d\n",
-        //  m_pipeline_reg[start_stage]->op);  // out
-        // printf(" Num of Tensor Core Op: %llu\n", m_num_of_tensor_core_op);
-      } else if ((*ready_reg)->op == SP_OP || (*ready_reg)->op == ALU_OP ||
-                 (*ready_reg)->op == INT_OP) {
-        tmp_sp_gpu_sim_cycle[cur_warp_id] = exp_gpu_sim_cycle;
-        // printf("shader_core_ctx::execute():---START--SP----\n");
-        // printf("cur_warp_id: %d , tmp_sp_gpu_sim_cycle[cur_warp_id]: %llu\n",
-        //        cur_warp_id, tmp_sp_gpu_sim_cycle[cur_warp_id]);
-        // printf("START: tmp_SP_gpu_sim_cycle: %d\n",
-        //  m_pipeline_reg[start_stage]->op);  // out
+        // } else if ((*ready_reg)->op == SP_OP || (*ready_reg)->op == ALU_OP ||
+        //            (*ready_reg)->op == INT_OP) {
+        //   if ((*ready_reg)->op == SP_OP && !tmp_sp_counted[cur_warp_id]) {
+        //     tmp_sp_counted[cur_warp_id] = true;
+        //     tmp_sp_gpu_sim_cycle[cur_warp_id] = exp_gpu_sim_cycle;
+        //     // printf("shader_core_ctx::execute():---START--SP----\n");
+        //     printf(
+        //         "shader_core_ctx::execute(): cur_warp_id: %d , "
+        //         "tmp_sp_gpu_sim_cycle[cur_warp_id]: %llu\n",
+        //         cur_warp_id, tmp_sp_gpu_sim_cycle[cur_warp_id]);
+        //     // printf("START: tmp_SP_gpu_sim_cycle: %d\n",
+        //     // m_pipeline_reg[start_stage]->op);  // out
+        //   }
+        // } else if ((*ready_reg)->op == TENSOR_CORE_LOAD_OP) {
+        //   tmp_tensor_load_gpu_sim_cycle[cur_warp_id] = exp_gpu_sim_cycle;
+        //   // printf("shader_core_ctx::execute():---START--TC-LOAD----\n");
+        //   printf(
+        //       "shader_core_ctx::execute(): cur_warp_id: %d , "
+        //       "tmp_dp_gpu_sim_cycle[cur_warp_id]: %llu\n",
+        //       cur_warp_id, tmp_tensor_load_gpu_sim_cycle[cur_warp_id]);
+        // } else if ((*ready_reg)->op == LOAD_OP) {
+        //   tmp_load_gpu_sim_cycle[cur_warp_id] = exp_gpu_sim_cycle;
+        //   // printf("shader_core_ctx::execute():---START--LOAD----\n");
+        //   printf(
+        //       "shader_core_ctx::execute(): cur_warp_id: %d , "
+        //       "tmp_load_gpu_sim_cycle[cur_warp_id]: %llu\n",
+        //       cur_warp_id, tmp_load_gpu_sim_cycle[cur_warp_id]);
+        // }
       }
+
+      //!
       // Attempts to reserve a result bus for the instruction's results, based
       // on its latency. If successful, or if the instruction doesn't need
       // immediate result bus scheduling, the instruction is issued.
@@ -2027,13 +2071,79 @@ void shader_core_ctx::warp_inst_complete(const warp_inst_t &inst) {
       printf("[warp_inst_complete] uid=%u core=%u warp=%u pc=%#x @ time=%llu \n",
              inst.get_uid(), m_sid, inst.warp_id(), inst.pc,  m_gpu->gpu_tot_sim_cycle +  m_gpu->gpu_sim_cycle);
 #endif
+  // printf("------------------------------------\n");
+  if (inst.warp_id() == 0) {
+    printf("[warp_inst_complete] uid=%u core=%u warp=%u pc=%#x @ time=%llu \n",
+           inst.get_uid(), m_sid, inst.warp_id(), inst.pc,
+           m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
+  }
 
-  if (inst.op_pipe == SP__OP)
+  int cur_warp_id = inst.warp_id();
+
+  // if(cur_warp_id==0){
+
+  // if (inst.op_pipe == SP__OP || inst.op_pipe == TENSOR_CORE__OP) {
+  // if(!accumulated){
+  if (inst.op_pipe == SP__OP) {
+    printf("SP__OP\n");
     m_stats->m_num_sp_committed[m_sid]++;
-  else if (inst.op_pipe == SFU__OP)
+    // tmp_sp_counted[cur_warp_id] = false;
+
+    m_num_of_SP_op++;
+    // printf("-----END---SP-----\n");
+    // sp_gpu_sim_cycle += exp_gpu_sim_cycle -
+    // tmp_sp_gpu_sim_cycle[cur_warp_id]; printf(
+    //     "cur_warp_id: %d, "
+    //     "exp_gpu_sim_cycle: %llu, "
+    //     "tmp_sp_gpu_sim_cycle[cur_warp_id]: %llu, "
+    //     "sp_gpu_sim_cycle: %llu\n",
+    //     cur_warp_id, exp_gpu_sim_cycle, tmp_sp_gpu_sim_cycle[cur_warp_id],
+    //     sp_gpu_sim_cycle);
+
+    // printf("Num of SP Op: %llu\n", m_num_of_SP_op);
+  } else if (inst.op_pipe == SFU__OP) {
+    printf("SFU__OP\n");
     m_stats->m_num_sfu_committed[m_sid]++;
-  else if (inst.op_pipe == MEM__OP)
+  } else if (inst.op_pipe == MEM__OP) {
+    //! not sure whether memory is accessed once in each cycle
+    printf("MEM__OP\n");
+    if (inst.op == LOAD_OP) {
+      printf("LOAD_OP\n");
+      // load_gpu_sim_cycle +=
+      //     exp_gpu_sim_cycle - tmp_load_gpu_sim_cycle[inst.warp_id()];
+    } else if (inst.op == TENSOR_CORE_LOAD_OP) {
+      printf("TENSOR_CORE_LOAD_OP\n");
+      // tensor_load_gpu_sim_cycle +=
+      //     exp_gpu_sim_cycle - tmp_tensor_load_gpu_sim_cycle[inst.warp_id()];
+    } else {
+      printf("other MEM_OP\n");
+    }
     m_stats->m_num_mem_committed[m_sid]++;
+  } else if (inst.op_pipe == TENSOR_CORE__OP) {
+    // tmp_tensor_counted[cur_warp_id] = false;
+    printf("TENSOR_CORE__OP\n");
+    m_num_of_tensor_core_op++;
+    printf("-----END---TENSOR-----\n");
+    // tensor_gpu_sim_cycle +=
+    //     exp_gpu_sim_cycle - tmp_tensor_gpu_sim_cycle[cur_warp_id];
+    // printf(
+    //     "cur_warp_id: %d, exp_gpu_sim_cycle: %llu, "
+    //     "tmp_tensor_gpu_sim_cycle[cur_warp_id]: %llu, tensor_gpu_sim_cycle:"
+    //     "%llu\n",
+    //     cur_warp_id, exp_gpu_sim_cycle,
+    //     tmp_tensor_gpu_sim_cycle[cur_warp_id], tensor_gpu_sim_cycle);
+    // printf("Num of Tensor Core Op: %llu\n", m_num_of_tensor_core_op);
+
+  } else {
+    m_num_of_non_tensor_core_non_SP_op++;
+    printf("Other Instruction: %d\n", inst.op);
+    // printf(" Num of other Op: %llu\n", m_num_of_non_tensor_core_non_SP_op);
+  }
+  // }
+
+  // accumulated  = true;
+  // }
+  // printf("------------------------------------\n");
 
   if (m_config->gpgpu_clock_gated_lanes == false)
     m_stats->m_num_sim_insn[m_sid] += m_config->warp_size;
@@ -2095,48 +2205,79 @@ void shader_core_ctx::writeback() {
     ///------- Tensor Core -------
     int cur_warp_id = pipe_reg->warp_id();
     //! added @lzydaphne
-    if (pipe_reg->op == TENSOR_CORE_OP) {
-      m_num_of_tensor_core_op++;
-      // printf("-----END---TENSOR-----\n");
-      tensor_gpu_sim_cycle +=
-          exp_gpu_sim_cycle - tmp_tensor_gpu_sim_cycle[cur_warp_id];
+    // if (pipe_reg->op == TENSOR_CORE_OP) {
+    //   m_num_of_tensor_core_op++;
+    //   printf("-----END---TENSOR-----\n");
+    //   tensor_gpu_sim_cycle +=
+    //       exp_gpu_sim_cycle - tmp_tensor_gpu_sim_cycle[cur_warp_id];
 
-      // printf(
-      //     "cur_warp_id: %d, exp_gpu_sim_cycle: %llu, "
-      //     "tmp_tensor_gpu_sim_cycle[cur_warp_id]: %llu, tensor_gpu_sim_cycle:
-      //     "
-      //     "%llu\n",
-      //     cur_warp_id, exp_gpu_sim_cycle,
-      //     tmp_tensor_gpu_sim_cycle[cur_warp_id], tensor_gpu_sim_cycle);
+    //   printf(
+    //       "cur_warp_id: %d, exp_gpu_sim_cycle: %llu, "
+    //       "tmp_tensor_gpu_sim_cycle[cur_warp_id]: %llu,
+    //       tensor_gpu_sim_cycle:"
+    //       "%llu\n",
+    //       cur_warp_id, exp_gpu_sim_cycle,
+    //       tmp_tensor_gpu_sim_cycle[cur_warp_id], tensor_gpu_sim_cycle);
 
-      // printf("tensor_gpu_sim_cycle %llu\n", tensor_gpu_sim_cycle);
-      printf("cur_warp_id: %d, TC Instruction: %d\n", cur_warp_id,
-             pipe_reg->op);
-      // printf("Num of Tensor Core Op: %llu\n", m_num_of_tensor_core_op);
+    //   // printf("tensor_gpu_sim_cycle %llu\n", tensor_gpu_sim_cycle);
+    //   // printf("cur_warp_id: %d, TC Instruction: %d\n", cur_warp_id,
+    //   //        pipe_reg->op);
+    //   printf("Num of Tensor Core Op: %llu\n", m_num_of_tensor_core_op);
 
-    } else if (pipe_reg->op == SP_OP) {
-      m_num_of_SP_op++;
-      // printf("-----END---SP-----\n");
-      sp_gpu_sim_cycle += exp_gpu_sim_cycle - tmp_sp_gpu_sim_cycle[cur_warp_id];
-      // printf(
-      //     "cur_warp_id: %d, "
-      //     "exp_gpu_sim_cycle: %llu, "
-      //     "tmp_sp_gpu_sim_cycle[cur_warp_id]: %llu, "
-      //     "sp_gpu_sim_cycle: %llu\n",
-      //     cur_warp_id, exp_gpu_sim_cycle, tmp_sp_gpu_sim_cycle[cur_warp_id],
-      //     sp_gpu_sim_cycle);
+    // } else if (pipe_reg->op == SP_OP) {
+    //   m_num_of_SP_op++;
+    //   printf("-----END---SP-----\n");
+    //   sp_gpu_sim_cycle += exp_gpu_sim_cycle -
+    //   tmp_sp_gpu_sim_cycle[cur_warp_id]; printf(
+    //       "cur_warp_id: %d, "
+    //       "exp_gpu_sim_cycle: %llu, "
+    //       "tmp_sp_gpu_sim_cycle[cur_warp_id]: %llu, "
+    //       "sp_gpu_sim_cycle: %llu\n",
+    //       cur_warp_id, exp_gpu_sim_cycle, tmp_sp_gpu_sim_cycle[cur_warp_id],
+    //       sp_gpu_sim_cycle);
 
-      // printf("warp_id: %d\n", cur_warp_id);
-      // printf(" exp_gpu_sim_cycle %llu\n", exp_gpu_sim_cycle);
-      // printf("sp_gpu_sim_cycle %llu\n", sp_gpu_sim_cycle);
-      printf("SP Instruction: %d\n", pipe_reg->op);
-      // printf("Num of SP Op: %llu\n", m_num_of_SP_op);
+    //   // printf("warp_id: %d\n", cur_warp_id);
+    //   // printf(" exp_gpu_sim_cycle %llu\n", exp_gpu_sim_cycle);
+    //   // printf("sp_gpu_sim_cycle %llu\n", sp_gpu_sim_cycle);
+    //   // printf("SP Instruction: %d\n", pipe_reg->op);
+    //   printf("Num of SP Op: %llu\n", m_num_of_SP_op);
 
-    } else {
-      m_num_of_non_tensor_core_non_SP_op++;
-      printf("Other Instruction: %d\n", pipe_reg->op);
-      // printf(" Num of other Op: %llu\n", m_num_of_non_tensor_core_non_SP_op);
-    }
+    // }
+    // else if(pipe_reg->op == TENSOR_CORE_LOAD_OP){
+    //   m_num_of_TCLOAD_op++;
+    //   printf("-----END---TC-LOAD-----\n");
+    //   tensor_load_gpu_sim_cycle +=
+    //       exp_gpu_sim_cycle - tmp_tensor_load_gpu_sim_cycle[cur_warp_id];
+    //   printf(
+    //       "cur_warp_id: %d, exp_gpu_sim_cycle: %llu, "
+    //       "tmp_tensor_load_gpu_sim_cycle[cur_warp_id]: %llu, "
+    //       "tensor_load_gpu_sim_cycle: %llu\n",
+    //       cur_warp_id, exp_gpu_sim_cycle,
+    //       tmp_tensor_load_gpu_sim_cycle[cur_warp_id],
+    //       tensor_load_gpu_sim_cycle);
+
+    //   printf("Num of Tensor Core Load Op: %llu\n", m_num_of_TCLOAD_op);
+
+    // } else if(pipe_reg->op == LOAD_OP){
+    //   m_num_of_LOAD_op++;
+    //   printf("-----END---LOAD-----\n");
+    //   load_gpu_sim_cycle +=
+    //       exp_gpu_sim_cycle - tmp_load_gpu_sim_cycle[cur_warp_id];
+    //   printf(
+    //       "cur_warp_id: %d, exp_gpu_sim_cycle: %llu, "
+    //       "tmp_load_gpu_sim_cycle[cur_warp_id]: %llu, "
+    //       "load_gpu_sim_cycle: %llu\n",
+    //       cur_warp_id, exp_gpu_sim_cycle,
+    //       tmp_load_gpu_sim_cycle[cur_warp_id], load_gpu_sim_cycle);
+    //   printf("Num of Load Op: %llu\n", m_num_of_LOAD_op);
+
+    // }
+    // else {
+    //   m_num_of_non_tensor_core_non_SP_op++;
+    //   printf("Other Instruction: %d\n", pipe_reg->op);
+    //   // printf(" Num of other Op: %llu\n",
+    //   m_num_of_non_tensor_core_non_SP_op);
+    // }
     //! Updating Simulation Statistics
     m_gpu->gpu_sim_insn_last_update_sid = m_sid;
     m_gpu->gpu_sim_insn_last_update = m_gpu->gpu_sim_cycle;
@@ -2528,11 +2669,14 @@ void sfu::issue(register_set &source_reg) {
 }
 
 void tensor_core::issue(register_set &source_reg) {
+  printf("tensor core issue\n");
   warp_inst_t **ready_reg =
       source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
   // m_core->incexecstat((*ready_reg));
 
   (*ready_reg)->op_pipe = TENSOR_CORE__OP;
+  // print latency
+  printf("tensor core latency: %d\n", (*ready_reg)->latency);
   m_core->incsfu_stat(m_core->get_config()->warp_size, (*ready_reg)->latency);
   pipelined_simd_unit::issue(source_reg);
 }
@@ -2683,7 +2827,7 @@ pipelined_simd_unit::pipelined_simd_unit(register_set *result_port,
   active_insts_in_pipeline = 0;
 }
 
-//! tensor core use this to cycle
+//! each function unit use this to cycle
 // models the throughput and latency for different types of instruction.
 void pipelined_simd_unit::cycle() {
   //! Moving Instructions to Result Port
@@ -2696,6 +2840,7 @@ void pipelined_simd_unit::cycle() {
     m_result_port->move_in(m_pipeline_reg[0]);
     assert(active_insts_in_pipeline > 0);
     active_insts_in_pipeline--;
+    // printf("Moving Instructions to Result Port\n");
   }
   //! Advancing Instructions Through Pipeline Stages
   // If there are active instructions in the pipeline, this loop iteratively
@@ -2703,9 +2848,13 @@ void pipelined_simd_unit::cycle() {
   // This movement simulates the progression of instructions through the
   // pipeline's stages during each cycle.
   if (active_insts_in_pipeline) {
+    // printf("Active instructions in pipeline\n");
     for (unsigned stage = 0; (stage + 1) < m_pipeline_depth; stage++)
       move_warp(m_pipeline_reg[stage], m_pipeline_reg[stage + 1]);
   }
+  // else {
+  //   printf("No active instructions in pipeline\n");
+  // }
   //! Dispatching Instructions
   // This block handles the dispatching of instructions from the dispatch
   // register to the pipeline. It checks for any dispatch delay, and if there's
@@ -2719,6 +2868,13 @@ void pipelined_simd_unit::cycle() {
           m_dispatch_reg->latency - m_dispatch_reg->initiation_interval;
       move_warp(m_pipeline_reg[start_stage], m_dispatch_reg);
       active_insts_in_pipeline++;
+
+      if (m_pipeline_reg[start_stage]->op == TENSOR_CORE_OP) {
+        // printf("start_stage: %d , m_dispatch_reg->latency:%d ,
+        // m_dispatch_reg->initiation_interval:%d \n",
+        // start_stage,m_dispatch_reg->latency,m_dispatch_reg->initiation_interval);
+        printf("TENSOR_CORE_OP Dispatching Instructions\n");
+      }
 
       // int cur_warp_id = m_pipeline_reg[start_stage]->warp_id();
       // //* need to check if this is tensor core instruction
