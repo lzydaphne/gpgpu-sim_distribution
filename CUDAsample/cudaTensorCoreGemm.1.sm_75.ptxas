@@ -6,4 +6,4 @@ ptxas info    : Used 10 registers, 372 bytes cmem[0]
 ptxas info    : Compiling entry function '_Z12wmma_exampleP6__halfS0_Pfiiiff' for 'sm_75'
 ptxas info    : Function properties for _Z12wmma_exampleP6__halfS0_Pfiiiff
     0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
-ptxas info    : Used 33 registers, 396 bytes cmem[0]
+ptxas info    : Used 36 registers, 396 bytes cmem[0]

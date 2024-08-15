@@ -1,0 +1,168 @@
+
+
+
+
+
+
+
+
+.version 7.6
+.target sm_75
+.address_size 64
+
+
+.const .align 4 .b8 predefined_input[144] = {195, 245, 72, 64, 164, 112, 45, 192, 102, 102, 14, 65, 41, 92, 167, 192, 51, 51, 71, 65, 225, 122, 252, 192, 0, 0, 0, 0, 51, 51, 107, 65, 0, 0, 0, 0, 102, 102, 146, 65, 0, 0, 192, 191, 205, 204, 28, 65, 133, 235, 17, 63, 102, 102, 178, 193, 205, 204, 92, 65, 51, 51, 227, 192, 205, 204, 204, 65, 154, 153, 121, 192, 205, 204, 116, 193, 154, 153, 249, 64, 51, 51, 51, 193, 51, 51, 191, 65, 205, 204, 204, 192, 0, 0, 140, 65, 143, 194, 149, 64, 154, 153, 17, 193, 102, 102, 218, 65, 154, 153, 25, 192, 102, 102, 110, 65, 51, 51, 243, 192, 154, 153, 73, 193, 154, 153, 169, 64, 205, 204, 160, 193, 51, 51, 27, 65, 51, 51, 115, 192, 0, 0, 228, 65};
+.const .align 4 .b8 conv_kernel3[36] = {0, 0, 128, 63, 0, 0, 0, 0, 0, 0, 128, 191, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 192, 0, 0, 128, 63, 0, 0, 0, 0, 0, 0, 128, 191};
+
+.visible .entry _Z27convolution_2D_basic_kernelPfiiii(
+.param .u64 _Z27convolution_2D_basic_kernelPfiiii_param_0,
+.param .u32 _Z27convolution_2D_basic_kernelPfiiii_param_1,
+.param .u32 _Z27convolution_2D_basic_kernelPfiiii_param_2,
+.param .u32 _Z27convolution_2D_basic_kernelPfiiii_param_3,
+.param .u32 _Z27convolution_2D_basic_kernelPfiiii_param_4
+)
+{
+.reg .pred %p<58>;
+.reg .f32 %f<47>;
+.reg .b32 %r<18>;
+.reg .b64 %rd<10>;
+
+
+ld.param.u64 %rd2, [_Z27convolution_2D_basic_kernelPfiiii_param_0];
+ld.param.u32 %r5, [_Z27convolution_2D_basic_kernelPfiiii_param_1];
+ld.param.u32 %r6, [_Z27convolution_2D_basic_kernelPfiiii_param_2];
+ld.param.u32 %r7, [_Z27convolution_2D_basic_kernelPfiiii_param_3];
+ld.param.u32 %r8, [_Z27convolution_2D_basic_kernelPfiiii_param_4];
+mov.u32 %r9, %ntid.x;
+mov.u32 %r10, %ctaid.x;
+mov.u32 %r11, %tid.x;
+mad.lo.s32 %r1, %r10, %r9, %r11;
+mov.u32 %r12, %ntid.y;
+mov.u32 %r13, %ctaid.y;
+mov.u32 %r14, %tid.y;
+mad.lo.s32 %r2, %r13, %r12, %r14;
+setp.ge.s32 %p4, %r1, %r7;
+setp.ge.s32 %p5, %r2, %r8;
+or.pred %p6, %p4, %p5;
+@%p6 bra $L__BB0_20;
+
+setp.gt.s32 %p7, %r2, -1;
+setp.lt.s32 %p8, %r2, %r6;
+and.pred %p1, %p7, %p8;
+not.pred %p9, %p1;
+setp.lt.s32 %p10, %r1, 0;
+or.pred %p11, %p9, %p10;
+setp.ge.s32 %p12, %r1, %r5;
+mul.wide.s32 %rd3, %r2, 24;
+mov.u64 %rd4, predefined_input;
+add.s64 %rd5, %rd4, %rd3;
+mul.wide.s32 %rd6, %r1, 4;
+add.s64 %rd1, %rd5, %rd6;
+mov.f32 %f39, 0f00000000;
+or.pred %p13, %p11, %p12;
+@%p13 bra $L__BB0_3;
+
+ld.const.f32 %f20, [conv_kernel3];
+ld.const.f32 %f21, [%rd1];
+fma.rn.f32 %f39, %f20, %f21, 0f00000000;
+
+$L__BB0_3:
+setp.lt.s32 %p14, %r1, -1;
+or.pred %p16, %p9, %p14;
+add.s32 %r3, %r1, 1;
+setp.ge.s32 %p17, %r3, %r5;
+or.pred %p18, %p16, %p17;
+@%p18 bra $L__BB0_5;
+
+ld.const.f32 %f22, [conv_kernel3+4];
+ld.const.f32 %f23, [%rd1+4];
+fma.rn.f32 %f39, %f22, %f23, %f39;
+
+$L__BB0_5:
+setp.lt.s32 %p19, %r1, -2;
+or.pred %p21, %p9, %p19;
+add.s32 %r4, %r1, 2;
+setp.ge.s32 %p22, %r4, %r5;
+or.pred %p23, %p21, %p22;
+@%p23 bra $L__BB0_7;
+
+ld.const.f32 %f24, [conv_kernel3+8];
+ld.const.f32 %f25, [%rd1+8];
+fma.rn.f32 %f39, %f24, %f25, %f39;
+
+$L__BB0_7:
+add.s32 %r15, %r2, 1;
+setp.lt.s32 %p24, %r15, %r6;
+setp.gt.s32 %p25, %r2, -2;
+and.pred %p2, %p25, %p24;
+not.pred %p26, %p2;
+or.pred %p28, %p26, %p10;
+or.pred %p30, %p28, %p12;
+@%p30 bra $L__BB0_9;
+
+ld.const.f32 %f26, [conv_kernel3+12];
+ld.const.f32 %f27, [%rd1+24];
+fma.rn.f32 %f39, %f26, %f27, %f39;
+
+$L__BB0_9:
+or.pred %p33, %p26, %p14;
+or.pred %p35, %p33, %p17;
+@%p35 bra $L__BB0_11;
+
+ld.const.f32 %f28, [conv_kernel3+16];
+ld.const.f32 %f29, [%rd1+28];
+fma.rn.f32 %f39, %f28, %f29, %f39;
+
+$L__BB0_11:
+or.pred %p38, %p26, %p19;
+or.pred %p40, %p38, %p22;
+@%p40 bra $L__BB0_13;
+
+ld.const.f32 %f30, [conv_kernel3+20];
+ld.const.f32 %f31, [%rd1+32];
+fma.rn.f32 %f39, %f30, %f31, %f39;
+
+$L__BB0_13:
+add.s32 %r16, %r2, 2;
+setp.lt.s32 %p41, %r16, %r6;
+setp.gt.s32 %p42, %r2, -3;
+and.pred %p3, %p42, %p41;
+not.pred %p43, %p3;
+or.pred %p45, %p43, %p10;
+or.pred %p47, %p45, %p12;
+@%p47 bra $L__BB0_15;
+
+ld.const.f32 %f32, [conv_kernel3+24];
+ld.const.f32 %f33, [%rd1+48];
+fma.rn.f32 %f39, %f32, %f33, %f39;
+
+$L__BB0_15:
+or.pred %p50, %p43, %p14;
+or.pred %p52, %p50, %p17;
+@%p52 bra $L__BB0_17;
+
+ld.const.f32 %f34, [conv_kernel3+28];
+ld.const.f32 %f35, [%rd1+52];
+fma.rn.f32 %f39, %f34, %f35, %f39;
+
+$L__BB0_17:
+or.pred %p55, %p43, %p19;
+or.pred %p57, %p55, %p22;
+@%p57 bra $L__BB0_19;
+
+ld.const.f32 %f36, [conv_kernel3+32];
+ld.const.f32 %f37, [%rd1+56];
+fma.rn.f32 %f39, %f36, %f37, %f39;
+
+$L__BB0_19:
+cvta.to.global.u64 %rd7, %rd2;
+mad.lo.s32 %r17, %r2, %r7, %r1;
+mul.wide.s32 %rd8, %r17, 4;
+add.s64 %rd9, %rd7, %rd8;
+st.global.f32 [%rd9], %f39;
+
+$L__BB0_20:
+ret;
+
+}
+

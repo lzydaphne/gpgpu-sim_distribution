@@ -1844,8 +1844,8 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
       //! try to check mma.load address
       // Add this check for MMA load operations
       if (pI->get_opcode() == MMA_LD_OP) {
-        printf("PTX Instruction: %s (wmma::load_matrix_sync) at %s:%u\n",
-               pI->get_opcode_cstr(), pI->source_file(), pI->source_line());
+        // printf("PTX Instruction: %s (wmma::load_matrix_sync) at %s:%u\n",
+        //        pI->get_opcode_cstr(), pI->source_file(), pI->source_line());
 
         addr_t addr = last_eaddr();
         memory_space_t space = last_space();
@@ -1888,8 +1888,8 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
 
         //* this "addr" seems to be wrong?
         // printf("  MMA Load: Address 0x%llx\n", (unsigned long long)addr);
-        printf("  Memory Space: %s\n", space_to_string(space));
-        printf("  Memory Bank: %u\n", space.get_bank());
+        // printf("  Memory Space: %s\n", space_to_string(space));
+        // printf("  Memory Bank: %u\n", space.get_bank());
 
         // // Additional checks based on memory space
         // if (space.is_const()) {
@@ -2030,12 +2030,12 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
 
         //* Add this print statement
         if (pI->has_memory_read()) {
-          printf(
-              "PTX Instruction: %s (at %s:%u) is reading memory. Address: "
-              "0x%llx, Size: %u bytes, Space: %s\n",
-              pI->get_opcode_cstr(), pI->source_file(), pI->source_line(),
-              (unsigned long long)insn_memaddr, insn_data_size,
-              space_to_string(insn_space));
+          // printf(
+          //     "PTX Instruction: %s (at %s:%u) is reading memory. Address: "
+          //     "0x%llx, Size: %u bytes, Space: %s\n",
+          //     pI->get_opcode_cstr(), pI->source_file(), pI->source_line(),
+          //     (unsigned long long)insn_memaddr, insn_data_size,
+          //     space_to_string(insn_space));
         }
       }
     }

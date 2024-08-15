@@ -73,6 +73,68 @@ const int WMMA_M = 16;
 const int WMMA_N = 16;
 const int WMMA_K = 16;
 
+
+// Performs an MxNxK GEMM (C=alpha*A*B + beta*C) assuming:
+//  1) Matrices are packed in memory.
+//  2) M, N and K are multiples of 16. 
+//  3) Neither A nor B are transposed.
+// Note: This is NOT a high performance example but is for demonstration purposes only
+//       For a high performance code please use the GEMM provided in cuBLAS.
+__global__ void wmma_example(half *a, half *b, float *c, int M, int N, int K, float alpha, float beta) {
+   // Leading dimensions. Packed with no transpositions.
+   int lda = M;
+   int ldb = K;
+   int ldc = M;
+
+   // Tile using a 2D grid
+   int warpM = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
+   int warpN = (blockIdx.y * blockDim.y + threadIdx.y);
+ 
+   // Declare the fragments
+   wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> a_frag;
+   wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> b_frag;
+   wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> acc_frag;
+   wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> c_frag;
+
+   wmma::fill_fragment(acc_frag, 0.0f);
+
+   // Loop over k
+   for (int i = 0; i < K; i += WMMA_K) {
+      int aRow = warpM * WMMA_M;
+      int aCol = i;
+
+      int bRow = i;
+      int bCol = warpN * WMMA_N;
+
+      // Bounds checking
+      if (aRow < M && aCol < K && bRow < K && bCol < N) {
+         // Load the inputs
+         wmma::load_matrix_sync(a_frag, a + aRow + aCol * lda, lda);
+         wmma::load_matrix_sync(b_frag, b + bRow + bCol * ldb, ldb);
+
+         // Perform the matrix multiplication
+         wmma::mma_sync(acc_frag, a_frag, b_frag, acc_frag);
+
+      }
+   }
+
+   // Load in the current value of c, scale it by beta, and add this our result scaled by alpha
+   int cRow = warpM * WMMA_M;
+   int cCol = warpN * WMMA_N;
+
+   if (cRow < M && cCol < N) {
+      wmma::load_matrix_sync(c_frag, c + cRow + cCol * ldc, ldc, wmma::mem_col_major);
+
+#pragma unroll
+      for(int i=0; i < c_frag.num_elements; i++) {
+         c_frag.x[i] = alpha * acc_frag.x[i] + beta * c_frag.x[i];
+      }
+
+      // Store the output
+      wmma::store_matrix_sync(c + cRow + cCol * ldc, c_frag, ldc, wmma::mem_col_major);
+   }
+}
+
 // Performs an MxNxK GEMM (C=alpha*A*B + beta*C) assuming:
 //  1) Matrices are packed in memory.
 //  2) M, N and K are multiples of 16.
@@ -80,7 +142,7 @@ const int WMMA_K = 16;
 // Note: This is NOT a high performance example but is for demonstration
 // purposes only
 //       For a high performance code please use the GEMM provided in cuBLAS.
-__global__ void wmma_example(half *a, half *b, float *c, int M, int N, int K,
+__global__ void wmma_example_experiment(half *a, half *b, float *c, int M, int N, int K,
                              float alpha, float beta) {
   // Leading dimensions. Packed with no transpositions.
   int lda = M;
@@ -93,36 +155,50 @@ __global__ void wmma_example(half *a, half *b, float *c, int M, int N, int K,
 
   // Declare the fragments
   wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major>
-      a_frag;
+      a_frag1;
+  wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major>
+      a_frag2;
   wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major>
-      b_frag;
+      b_frag1;
+  wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major>
+      b_frag2;
   wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> acc_frag;
   wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> c_frag;
 
   wmma::fill_fragment(acc_frag, 0.0f);
 
   // Loop over k
-  for (int i = 0; i < K; i += WMMA_K) {
-    int aRow = warpM * WMMA_M;
-    int aCol = i;
+  // #pragma unroll 2
+  // for (int i = 0; i < K; i += WMMA_K) {
+    //* loop unrolling
+    // int aCol = 0;
+    // int bRow = 0;
+    // int aRow = warpM * WMMA_M;
+    // int aCol = i;
 
-    int bRow = i;
-    int bCol = warpN * WMMA_N;
-    // printf("Thread (%d, %d) working on aRow = %d, aCol = %d, bRow = %d, bCol = %d\n", 
-    //   threadIdx.x, threadIdx.y, aRow, aCol, bRow, bCol);
+    // int bRow = i;
+    // int bCol = warpN * WMMA_N;
+
+    // printf("Thread (%d, %d) working on aRow = %d, aCol = %d, bRow = %d, bCol = %d\n", threadIdx.x, threadIdx.y, aRow, aCol, bRow, bCol);
 
     // Bounds checking
-    if (aRow < M && aCol < K && bRow < K && bCol < N) {
+    // if (aRow < M && aCol < K && bRow < K && bCol < N) {
       // Load the inputs
-      // printf("Thread (%d, %d) loading A from address %p\n", 
+      /* printf("Thread (%d, %d) loading A from address %p\n", 
       //  threadIdx.x, threadIdx.y, (void*)(a + aRow + aCol * lda));
-      wmma::load_matrix_sync(a_frag, a + aRow + aCol * lda, lda);
-      wmma::load_matrix_sync(b_frag, b + bRow + bCol * ldb, ldb);
+      // printf("Thread (%d, %d) loading B from address %p\n",
+      //   threadIdx.x, threadIdx.y, (void*)(b + bRow + bCol * ldb));
+      // printf("INSIDE--Thread (%d, %d) working on aRow = %d, aCol = %d, bRow = %d, bCol = %d\n", 
+      // threadIdx.x, threadIdx.y, aRow, aCol, bRow, bCol);*/
 
-      // Perform the matrix multiplication
-      wmma::mma_sync(acc_frag, a_frag, b_frag, acc_frag);
-    }
-  }
+    wmma::load_matrix_sync(a_frag1, a + warpM * WMMA_M , lda);
+    wmma::load_matrix_sync(b_frag1, b  + warpN * WMMA_N * ldb, ldb);
+    wmma::load_matrix_sync(a_frag2, a + warpM * WMMA_M + 16 * lda, lda);
+    //B: wmma::mma_sync(acc_frag, a_frag1, b_frag1, acc_frag);
+    wmma::mma_sync(acc_frag, a_frag1, b_frag1, acc_frag);
+    wmma::load_matrix_sync(b_frag2, b + 16 + warpN * WMMA_N * ldb, ldb);
+
+    wmma::mma_sync(acc_frag, a_frag2, b_frag2, acc_frag);
 
   // Load in the current value of c, scale it by beta, and add this our result
   // scaled by alpha
@@ -276,6 +352,15 @@ if (err != cudaSuccess) {
   cudaErrCheck(cudaMemcpy(c_host_wmma, c_wmma,
                           MATRIX_M * MATRIX_N * sizeof(float),
                           cudaMemcpyDeviceToHost));
+
+   // Print out the final result
+    printf("\nFinal Result:\n");
+    for (int i = 0; i < MATRIX_M; ++i) {
+      for (int j = 0; j < MATRIX_N; ++j) {
+        printf("%f ", c_host_wmma[i * MATRIX_N + j]);
+      }
+      printf("\n");
+    }
 
    // Free host memory
     free(h_a_fp32);

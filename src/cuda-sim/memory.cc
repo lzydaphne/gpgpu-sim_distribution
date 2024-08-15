@@ -133,8 +133,8 @@ void memory_space_impl<BSIZE>::read_single_block(mem_addr_t blk_idx,
 template <unsigned BSIZE>
 void memory_space_impl<BSIZE>::read(mem_addr_t addr, size_t length,
                                     void *data) const {
-  printf("Memory read: Starting address = 0x%llx, Length = %zu\n",
-         (unsigned long long)addr, length);
+  // printf("Memory read: Starting address = 0x%llx, Length = %zu\n",
+  //        (unsigned long long)addr, length);
 
   mem_addr_t index = addr >> m_log2_block_size;
   if ((addr + length) <= (index + 1) * BSIZE) {
@@ -165,8 +165,8 @@ void memory_space_impl<BSIZE>::read(mem_addr_t addr, size_t length,
     }
     assert(nbytes_remain == 0);
   }
-  printf("Memory read complete: End address = 0x%llx\n",
-         (unsigned long long)(addr + length - 1));
+  // printf("Memory read complete: End address = 0x%llx\n",
+  //        (unsigned long long)(addr + length - 1));
 }
 
 template <unsigned BSIZE>

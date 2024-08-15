@@ -1,0 +1,5 @@
+ptxas info    : 0 bytes gmem, 180 bytes cmem[3]
+ptxas info    : Compiling entry function '_Z27convolution_2D_basic_kernelPfiiii' for 'sm_75'
+ptxas info    : Function properties for _Z27convolution_2D_basic_kernelPfiiii
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 19 registers, 376 bytes cmem[0]

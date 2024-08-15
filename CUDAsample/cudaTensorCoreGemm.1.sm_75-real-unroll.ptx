@@ -1,0 +1,220 @@
+
+
+
+
+
+
+
+
+.version 7.6
+.target sm_75
+.address_size 64
+
+
+
+.visible .entry _Z12wmma_exampleP6__halfS0_Pfiiiff(
+.param .u64 _Z12wmma_exampleP6__halfS0_Pfiiiff_param_0,
+.param .u64 _Z12wmma_exampleP6__halfS0_Pfiiiff_param_1,
+.param .u64 _Z12wmma_exampleP6__halfS0_Pfiiiff_param_2,
+.param .u32 _Z12wmma_exampleP6__halfS0_Pfiiiff_param_3,
+.param .u32 _Z12wmma_exampleP6__halfS0_Pfiiiff_param_4,
+.param .u32 _Z12wmma_exampleP6__halfS0_Pfiiiff_param_5,
+.param .f32 _Z12wmma_exampleP6__halfS0_Pfiiiff_param_6,
+.param .f32 _Z12wmma_exampleP6__halfS0_Pfiiiff_param_7
+)
+{
+.reg .pred %p<12>;
+.reg .f32 %f<174>;
+.reg .b32 %r<97>;
+.reg .b64 %rd<22>;
+
+
+ld.param.u64 %rd4, [_Z12wmma_exampleP6__halfS0_Pfiiiff_param_0];
+ld.param.u64 %rd5, [_Z12wmma_exampleP6__halfS0_Pfiiiff_param_1];
+ld.param.u32 %r12, [_Z12wmma_exampleP6__halfS0_Pfiiiff_param_3];
+ld.param.u32 %r14, [_Z12wmma_exampleP6__halfS0_Pfiiiff_param_4];
+ld.param.u32 %r13, [_Z12wmma_exampleP6__halfS0_Pfiiiff_param_5];
+cvta.to.global.u64 %rd1, %rd4;
+mov.u32 %r15, %ntid.x;
+mov.u32 %r16, %ctaid.x;
+mov.u32 %r17, %tid.x;
+mad.lo.s32 %r18, %r16, %r15, %r17;
+mov.u32 %r19, %ntid.y;
+mov.u32 %r20, %ctaid.y;
+mov.u32 %r21, WARP_SZ;
+div.u32 %r22, %r18, %r21;
+mov.u32 %r23, %tid.y;
+mad.lo.s32 %r24, %r20, %r19, %r23;
+cvta.to.global.u64 %rd2, %rd5;
+shl.b32 %r1, %r22, 4;
+shl.b32 %r2, %r24, 4;
+setp.lt.s32 %p2, %r1, %r12;
+setp.lt.s32 %p3, %r2, %r14;
+and.pred %p1, %p3, %p2;
+setp.lt.s32 %p4, %r13, 1;
+mov.f32 %f141, 0f00000000;
+mov.f32 %f140, %f141;
+mov.f32 %f139, %f141;
+mov.f32 %f138, %f141;
+mov.f32 %f137, %f141;
+mov.f32 %f136, %f141;
+mov.f32 %f135, %f141;
+mov.f32 %f134, %f141;
+@%p4 bra $L__BB0_11;
+
+mul.lo.s32 %r3, %r2, %r13;
+add.s32 %r26, %r13, -1;
+shr.u32 %r27, %r26, 4;
+add.s32 %r4, %r27, 1;
+and.b32 %r5, %r4, 1;
+setp.eq.s32 %p5, %r27, 0;
+mov.u32 %r96, 0;
+mov.f32 %f134, 0f00000000;
+mov.f32 %f135, %f134;
+mov.f32 %f136, %f134;
+mov.f32 %f137, %f134;
+mov.f32 %f138, %f134;
+mov.f32 %f139, %f134;
+mov.f32 %f140, %f134;
+mov.f32 %f141, %f134;
+@%p5 bra $L__BB0_8;
+
+sub.s32 %r95, %r4, %r5;
+not.pred %p6, %p1;
+
+$L__BB0_3:
+.pragma "nounroll";
+@%p6 bra $L__BB0_5;
+
+mad.lo.s32 %r29, %r96, %r12, %r1;
+mul.wide.s32 %rd6, %r29, 2;
+add.s64 %rd7, %rd1, %rd6;
+wmma.load.a.sync.aligned.col.m16n16k16.global.f16 {%r30, %r31, %r32, %r33, %r34, %r35, %r36, %r37}, [%rd7], %r12;
+add.s32 %r38, %r96, %r3;
+mul.wide.s32 %rd8, %r38, 2;
+add.s64 %rd9, %rd2, %rd8;
+wmma.load.b.sync.aligned.col.m16n16k16.global.f16 {%r39, %r40, %r41, %r42, %r43, %r44, %r45, %r46}, [%rd9], %r13;
+wmma.mma.sync.aligned.col.col.m16n16k16.f32.f32 {%f141, %f140, %f139, %f138, %f137, %f136, %f135, %f134}, {%r30, %r31, %r32, %r33, %r34, %r35, %r36, %r37}, {%r39, %r40, %r41, %r42, %r43, %r44, %r45, %r46}, {%f141, %f140, %f139, %f138, %f137, %f136, %f135, %f134};
+
+$L__BB0_5:
+@%p6 bra $L__BB0_7;
+
+add.s32 %r47, %r96, 16;
+mad.lo.s32 %r48, %r47, %r12, %r1;
+mul.wide.s32 %rd10, %r48, 2;
+add.s64 %rd11, %rd1, %rd10;
+wmma.load.a.sync.aligned.col.m16n16k16.global.f16 {%r49, %r50, %r51, %r52, %r53, %r54, %r55, %r56}, [%rd11], %r12;
+add.s32 %r57, %r47, %r3;
+mul.wide.s32 %rd12, %r57, 2;
+add.s64 %rd13, %rd2, %rd12;
+wmma.load.b.sync.aligned.col.m16n16k16.global.f16 {%r58, %r59, %r60, %r61, %r62, %r63, %r64, %r65}, [%rd13], %r13;
+wmma.mma.sync.aligned.col.col.m16n16k16.f32.f32 {%f141, %f140, %f139, %f138, %f137, %f136, %f135, %f134}, {%r49, %r50, %r51, %r52, %r53, %r54, %r55, %r56}, {%r58, %r59, %r60, %r61, %r62, %r63, %r64, %r65}, {%f141, %f140, %f139, %f138, %f137, %f136, %f135, %f134};
+
+$L__BB0_7:
+add.s32 %r96, %r96, 32;
+add.s32 %r95, %r95, -2;
+setp.ne.s32 %p8, %r95, 0;
+@%p8 bra $L__BB0_3;
+
+$L__BB0_8:
+add.s32 %r93, %r13, -1;
+shr.u32 %r92, %r93, 4;
+add.s32 %r91, %r92, 1;
+and.b32 %r90, %r91, 1;
+setp.eq.s32 %p9, %r90, 0;
+@%p9 bra $L__BB0_11;
+
+not.pred %p10, %p1;
+@%p10 bra $L__BB0_11;
+
+mad.lo.s32 %r66, %r96, %r12, %r1;
+mul.wide.s32 %rd14, %r66, 2;
+add.s64 %rd15, %rd1, %rd14;
+wmma.load.a.sync.aligned.col.m16n16k16.global.f16 {%r67, %r68, %r69, %r70, %r71, %r72, %r73, %r74}, [%rd15], %r12;
+add.s32 %r75, %r96, %r3;
+mul.wide.s32 %rd16, %r75, 2;
+add.s64 %rd17, %rd2, %rd16;
+wmma.load.b.sync.aligned.col.m16n16k16.global.f16 {%r76, %r77, %r78, %r79, %r80, %r81, %r82, %r83}, [%rd17], %r13;
+wmma.mma.sync.aligned.col.col.m16n16k16.f32.f32 {%f141, %f140, %f139, %f138, %f137, %f136, %f135, %f134}, {%r67, %r68, %r69, %r70, %r71, %r72, %r73, %r74}, {%r76, %r77, %r78, %r79, %r80, %r81, %r82, %r83}, {%f141, %f140, %f139, %f138, %f137, %f136, %f135, %f134};
+
+$L__BB0_11:
+not.pred %p11, %p1;
+@%p11 bra $L__BB0_13;
+
+ld.param.f32 %f125, [_Z12wmma_exampleP6__halfS0_Pfiiiff_param_6];
+ld.param.f32 %f124, [_Z12wmma_exampleP6__halfS0_Pfiiiff_param_7];
+ld.param.u64 %rd21, [_Z12wmma_exampleP6__halfS0_Pfiiiff_param_2];
+mov.u32 %r89, %tid.y;
+mov.u32 %r88, %ntid.y;
+mov.u32 %r87, %ctaid.y;
+mad.lo.s32 %r86, %r87, %r88, %r89;
+shl.b32 %r85, %r86, 4;
+cvta.to.global.u64 %rd18, %rd21;
+mad.lo.s32 %r84, %r85, %r12, %r1;
+mul.wide.s32 %rd19, %r84, 4;
+add.s64 %rd20, %rd18, %rd19;
+wmma.load.c.sync.aligned.col.m16n16k16.global.f32 {%f100, %f101, %f102, %f103, %f104, %f105, %f106, %f107}, [%rd20], %r12;
+mul.f32 %f108, %f100, %f124;
+fma.rn.f32 %f109, %f141, %f125, %f108;
+mul.f32 %f110, %f101, %f124;
+fma.rn.f32 %f111, %f140, %f125, %f110;
+mul.f32 %f112, %f102, %f124;
+fma.rn.f32 %f113, %f139, %f125, %f112;
+mul.f32 %f114, %f103, %f124;
+fma.rn.f32 %f115, %f138, %f125, %f114;
+mul.f32 %f116, %f104, %f124;
+fma.rn.f32 %f117, %f137, %f125, %f116;
+mul.f32 %f118, %f105, %f124;
+fma.rn.f32 %f119, %f136, %f125, %f118;
+mul.f32 %f120, %f106, %f124;
+fma.rn.f32 %f121, %f135, %f125, %f120;
+mul.f32 %f122, %f107, %f124;
+fma.rn.f32 %f123, %f134, %f125, %f122;
+wmma.store.d.sync.aligned.col.m16n16k16.global.f32 [%rd20], {%f109, %f111, %f113, %f115, %f117, %f119, %f121, %f123}, %r12;
+
+$L__BB0_13:
+ret;
+
+}
+
+.visible .entry _Z17convertFp32ToFp16P6__halfPfi(
+.param .u64 _Z17convertFp32ToFp16P6__halfPfi_param_0,
+.param .u64 _Z17convertFp32ToFp16P6__halfPfi_param_1,
+.param .u32 _Z17convertFp32ToFp16P6__halfPfi_param_2
+)
+{
+.reg .pred %p<2>;
+.reg .b16 %rs<2>;
+.reg .f32 %f<2>;
+.reg .b32 %r<6>;
+.reg .b64 %rd<9>;
+
+
+ld.param.u64 %rd1, [_Z17convertFp32ToFp16P6__halfPfi_param_0];
+ld.param.u64 %rd2, [_Z17convertFp32ToFp16P6__halfPfi_param_1];
+ld.param.u32 %r2, [_Z17convertFp32ToFp16P6__halfPfi_param_2];
+mov.u32 %r3, %ntid.x;
+mov.u32 %r4, %ctaid.x;
+mov.u32 %r5, %tid.x;
+mad.lo.s32 %r1, %r3, %r4, %r5;
+setp.ge.s32 %p1, %r1, %r2;
+@%p1 bra $L__BB1_2;
+
+cvta.to.global.u64 %rd3, %rd2;
+mul.wide.s32 %rd4, %r1, 4;
+add.s64 %rd5, %rd3, %rd4;
+ld.global.f32 %f1, [%rd5];
+
+	{ cvt.rn.f16.f32 %rs1, %f1;}
+
+
+	cvta.to.global.u64 %rd6, %rd1;
+mul.wide.s32 %rd7, %r1, 2;
+add.s64 %rd8, %rd6, %rd7;
+st.global.u16 [%rd8], %rs1;
+
+$L__BB1_2:
+ret;
+
+}
+
